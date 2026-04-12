@@ -29,6 +29,9 @@ class User extends Authenticatable implements MustVerifyEmailContract
         'google_id',
         'is_admin',
         'is_staff',
+        'staff_can_orders',
+        'staff_can_reviews',
+        'staff_can_inventory',
         'is_vip',
         'is_blocked',
         'email_verification_otp',
@@ -58,6 +61,9 @@ class User extends Authenticatable implements MustVerifyEmailContract
             'password' => 'hashed',
             'is_admin' => 'boolean',
             'is_staff' => 'boolean',
+            'staff_can_orders' => 'boolean',
+            'staff_can_reviews' => 'boolean',
+            'staff_can_inventory' => 'boolean',
             'is_vip' => 'boolean',
             'is_blocked' => 'boolean',
             'birthday' => 'date',
@@ -85,6 +91,46 @@ class User extends Authenticatable implements MustVerifyEmailContract
     /**
      * Sinh nhật (năm chỉ để lấy tháng/ngày): hôm nay nằm trong ±$plusMinusDays ngày quanh kỷ niệm trong năm gần nhất.
      */
+    public function staffCanOrders(): bool
+    {
+        if ($this->is_admin) {
+            return true;
+        }
+
+        return (bool) $this->is_staff && (bool) $this->staff_can_orders;
+    }
+
+    public function staffCanReviews(): bool
+    {
+        if ($this->is_admin) {
+            return true;
+        }
+
+        return (bool) $this->is_staff && (bool) $this->staff_can_reviews;
+    }
+
+    public function staffCanInventory(): bool
+    {
+        if ($this->is_admin) {
+            return true;
+        }
+
+        return (bool) $this->is_staff && (bool) $this->staff_can_inventory;
+    }
+
+    public function staffHasAnyModulePermission(): bool
+    {
+        if ($this->is_admin) {
+            return true;
+        }
+
+        if (! $this->is_staff) {
+            return false;
+        }
+
+        return $this->staff_can_orders || $this->staff_can_reviews || $this->staff_can_inventory;
+    }
+
     public function isWithinBirthdayCouponWindow(int $plusMinusDays): bool
     {
         if ($plusMinusDays < 0 || ! $this->birthday) {

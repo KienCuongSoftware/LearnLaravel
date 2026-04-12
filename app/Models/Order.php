@@ -14,9 +14,9 @@ class Order extends Model
 
     protected $fillable = [
         'user_id', 'coupon_id', 'discount_amount', 'address_id', 'status', 'total_amount', 'shipping_fee', 'shipping_distance_km',
-        'shipping_address_snapshot', 'phone_snapshot', 'lat', 'lng', 'notes',
+        'shipping_address_snapshot', 'phone_snapshot', 'lat', 'lng', 'notes', 'internal_notes',
         'payment_method', 'payment_status', 'shipping_status',
-        'stock_reserved_expires_at', 'stock_reserved_released_at',
+        'stock_reserved_expires_at', 'stock_reserved_released_at', 'status_changed_at',
     ];
 
     /** Bản chụp địa chỉ/SĐT lúc đặt hàng; accessor để view vẫn dùng $order->shipping_address / $order->phone. */
@@ -37,34 +37,52 @@ class Order extends Model
         'shipping_distance_km' => 'decimal:2',
         'stock_reserved_expires_at' => 'datetime',
         'stock_reserved_released_at' => 'datetime',
+        'status_changed_at' => 'datetime',
     ];
 
     /** Chờ thanh toán (đơn đã tạo, chưa thanh toán PayPal). */
     public const STATUS_UNPAID = 'unpaid';
+
     /** Thanh toán PayPal thất bại → vẫn hiển thị trong "Chờ thanh toán" để retry. */
     public const STATUS_PAYMENT_FAILED = 'payment_failed';
+
     public const STATUS_PENDING = 'pending';
+
     public const STATUS_PROCESSING = 'processing';
+
     public const STATUS_SHIPPING = 'shipping';
+
     public const STATUS_AWAITING_DELIVERY = 'awaiting_delivery';
+
     public const STATUS_COMPLETED = 'completed';
+
     public const STATUS_CANCELLED = 'cancelled';
+
     public const STATUS_RETURN_REFUND = 'return_refund';
+
     /** Giữ để tương thích filter cũ (map sang unpaid). */
     public const STATUS_PENDING_PAYMENT = 'pending_payment';
 
     public const PAYMENT_METHOD_COD = 'cod';
+
     public const PAYMENT_METHOD_PAYPAL = 'paypal';
+
     public const PAYMENT_METHOD_MOMO = 'momo';
 
     public const PAYMENT_STATUS_UNPAID = 'unpaid';
+
     public const PAYMENT_STATUS_PAID = 'paid';
+
     public const PAYMENT_STATUS_FAILED = 'failed';
 
     public const SHIPPING_STATUS_PENDING = 'pending';
+
     public const SHIPPING_STATUS_SHIPPING = 'shipping';
+
     public const SHIPPING_STATUS_DELIVERED = 'delivered';
+
     public const SHIPPING_STATUS_CANCELLED = 'cancelled';
+
     public const SHIPPING_STATUS_RETURNED = 'returned';
 
     public static function statusLabels(): array
@@ -169,6 +187,32 @@ class Order extends Model
     public function inventoryLogs(): HasMany
     {
         return $this->hasMany(InventoryLog::class);
+    }
+
+    /** Trạng thái coi là đang vận hành (dùng cảnh báo đơn “treo”). */
+    public static function operationalStatusKeys(): array
+    {
+        return [
+            self::STATUS_PENDING,
+            self::STATUS_PROCESSING,
+            self::STATUS_SHIPPING,
+            self::STATUS_AWAITING_DELIVERY,
+        ];
+    }
+
+    public function scopeStaleOperational($query, int $hours)
+    {
+        $threshold = now()->subHours(max(1, $hours));
+
+        return $query
+            ->whereIn('status', self::operationalStatusKeys())
+            ->where(function ($q) use ($threshold) {
+                $q->where('status_changed_at', '<', $threshold)
+                    ->orWhere(function ($q2) use ($threshold) {
+                        $q2->whereNull('status_changed_at')
+                            ->where('created_at', '<', $threshold);
+                    });
+            });
     }
 
     public function getSubtotalAttribute(): float
