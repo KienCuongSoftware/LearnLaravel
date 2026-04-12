@@ -14,13 +14,16 @@ class StaffUserSeeder extends Seeder
      */
     public function run(): void
     {
-        User::firstOrCreate(
+        User::updateOrCreate(
             ['email' => 'staff@example.com'],
             [
                 'name' => 'Nhân viên NovaShop',
                 'password' => Hash::make('password'),
                 'is_admin' => false,
                 'is_staff' => true,
+                'staff_can_orders' => true,
+                'staff_can_reviews' => true,
+                'staff_can_inventory' => true,
                 'email_verified_at' => now(),
                 'avatar_palette_index' => UserInitialsAvatarService::randomPaletteIndex(),
             ]

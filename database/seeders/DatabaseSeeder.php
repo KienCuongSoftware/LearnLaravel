@@ -26,6 +26,7 @@ class DatabaseSeeder extends Seeder
         }
 
         $this->call([StaffUserSeeder::class]);
+        $this->call([ReviewRejectionTemplateSeeder::class]);
 
         $this->call([
             OrderSeeder::class,
