@@ -15,6 +15,10 @@ class StaffMiddleware
             abort(403, 'Bạn không có quyền truy cập khu vực nhân viên.');
         }
 
+        if (($user->is_staff ?? false) && ! ($user->is_admin ?? false) && ! $user->staffHasAnyModulePermission()) {
+            abort(403, 'Tài khoản nhân viên chưa được gán quyền module (đơn hàng / đánh giá / kho).');
+        }
+
         return $next($request);
     }
 }

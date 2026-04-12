@@ -17,6 +17,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'admin' => \App\Http\Middleware\AdminMiddleware::class,
             'staff' => \App\Http\Middleware\StaffMiddleware::class,
+            'staff.permission' => \App\Http\Middleware\StaffModulePermissionMiddleware::class,
             'email.verified.otp' => \App\Http\Middleware\EnsureEmailOtpVerified::class,
         ]);
         $middleware->web(prepend: [

@@ -6,8 +6,10 @@ use App\Http\Controllers\Admin\BrandController;
 use App\Http\Controllers\Admin\CategoryController;
 use App\Http\Controllers\Admin\FlashSaleController;
 use App\Http\Controllers\Admin\ProductController as AdminProductController;
+use App\Http\Controllers\Staff\ActivityLogController as StaffActivityLogController;
 use App\Http\Controllers\Staff\AuthController as StaffAuthController;
 use App\Http\Controllers\Staff\DashboardController as StaffDashboardController;
+use App\Http\Controllers\Staff\InventoryAdjustmentController as StaffInventoryAdjustmentController;
 use App\Http\Controllers\Staff\InventoryLogController as StaffInventoryLogController;
 use App\Http\Controllers\Staff\OrderController as StaffOrderController;
 use App\Http\Controllers\Staff\ProductReviewController as StaffProductReviewController;
@@ -255,13 +257,34 @@ Route::middleware(['auth', 'email.verified.otp', 'admin'])->prefix('admin')->nam
 Route::middleware(['auth', 'email.verified.otp', 'staff'])->prefix('staff')->name('staff.')->group(function () {
     Route::post('/logout', [StaffAuthController::class, 'logout'])->name('logout');
     Route::get('/dashboard', [StaffDashboardController::class, 'dashboard'])->name('dashboard');
-    Route::get('/orders', [StaffOrderController::class, 'index'])->name('orders.index');
-    Route::get('/orders/{order}', [StaffOrderController::class, 'show'])->name('orders.show');
-    Route::put('/orders/{order}/status', [StaffOrderController::class, 'updateStatus'])->name('orders.update-status');
-    Route::get('/inventory-logs', [StaffInventoryLogController::class, 'index'])->name('inventory-logs.index');
-    Route::get('/product-reviews', [StaffProductReviewController::class, 'index'])->name('product-reviews.index');
-    Route::post('/product-reviews/{review}/approve', [StaffProductReviewController::class, 'approve'])->name('product-reviews.approve');
-    Route::post('/product-reviews/{review}/reject', [StaffProductReviewController::class, 'reject'])->name('product-reviews.reject');
+    Route::get('/activity-log', [StaffActivityLogController::class, 'index'])->name('activity-log.index');
+
+    Route::middleware('staff.permission:orders')->group(function () {
+        Route::get('/orders', [StaffOrderController::class, 'index'])->name('orders.index');
+        Route::get('/orders/export', [StaffOrderController::class, 'export'])->name('orders.export');
+        Route::get('/orders/{order}/print', [StaffOrderController::class, 'print'])->name('orders.print');
+        Route::get('/orders/{order}/pdf', [StaffOrderController::class, 'pdf'])->name('orders.pdf');
+        Route::get('/orders/{order}', [StaffOrderController::class, 'show'])->name('orders.show');
+        Route::put('/orders/{order}/status', [StaffOrderController::class, 'updateStatus'])->name('orders.update-status');
+        Route::put('/orders/{order}/internal-notes', [StaffOrderController::class, 'updateInternalNotes'])->name('orders.internal-notes');
+        Route::post('/orders/{order}/resend-status-email', [StaffOrderController::class, 'resendStatusEmail'])->name('orders.resend-email');
+        Route::post('/orders/{order}/sms', [StaffOrderController::class, 'sendSmsPlaceholder'])->name('orders.sms');
+    });
+
+    Route::middleware('staff.permission:inventory')->group(function () {
+        Route::get('/inventory-logs', [StaffInventoryLogController::class, 'index'])->name('inventory-logs.index');
+        Route::get('/inventory/adjust', [StaffInventoryAdjustmentController::class, 'create'])->name('inventory.adjust');
+        Route::post('/inventory/adjust', [StaffInventoryAdjustmentController::class, 'store'])->name('inventory.adjust.store');
+    });
+
+    Route::middleware('staff.permission:reviews')->group(function () {
+        Route::get('/product-reviews', [StaffProductReviewController::class, 'index'])->name('product-reviews.index');
+        Route::get('/product-reviews/published', [StaffProductReviewController::class, 'published'])->name('product-reviews.published');
+        Route::post('/product-reviews/{review}/approve', [StaffProductReviewController::class, 'approve'])->name('product-reviews.approve');
+        Route::post('/product-reviews/{review}/reject', [StaffProductReviewController::class, 'reject'])->name('product-reviews.reject');
+        Route::post('/product-reviews/{review}/hide', [StaffProductReviewController::class, 'hide'])->name('product-reviews.hide');
+        Route::post('/product-reviews/{review}/unhide', [StaffProductReviewController::class, 'unhide'])->name('product-reviews.unhide');
+    });
 });
 
 // Serve product images from storage (with cache; mime by extension to avoid 500 on .webp/Windows)
