@@ -11,6 +11,7 @@ use Illuminate\Support\Collection;
 class RecommendationService
 {
     public const VARIANT_V1 = 'v1';
+
     public const VARIANT_V2 = 'v2';
 
     /**
@@ -59,10 +60,10 @@ class RecommendationService
         $query = Product::query()
             ->with('category')
             ->withCount([
-                'reviews as approved_reviews_count' => fn ($rq) => $rq->where('is_approved', true),
+                'reviews as approved_reviews_count' => fn ($rq) => $rq->publicVisible(),
             ])
             ->withAvg([
-                'reviews as approved_reviews_avg_rating' => fn ($rq) => $rq->where('is_approved', true),
+                'reviews as approved_reviews_avg_rating' => fn ($rq) => $rq->publicVisible(),
             ], 'rating')
             ->where('is_active', true)
             ->when(! empty($excludeProductIds), fn ($q) => $q->whereNotIn('id', $excludeProductIds))
@@ -103,10 +104,10 @@ class RecommendationService
         return Product::query()
             ->with('category')
             ->withCount([
-                'reviews as approved_reviews_count' => fn ($rq) => $rq->where('is_approved', true),
+                'reviews as approved_reviews_count' => fn ($rq) => $rq->publicVisible(),
             ])
             ->withAvg([
-                'reviews as approved_reviews_avg_rating' => fn ($rq) => $rq->where('is_approved', true),
+                'reviews as approved_reviews_avg_rating' => fn ($rq) => $rq->publicVisible(),
             ], 'rating')
             ->whereIn('id', $topIds)
             ->when(! empty($excludeProductIds), fn ($q) => $q->whereNotIn('id', $excludeProductIds))

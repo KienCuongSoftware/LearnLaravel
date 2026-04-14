@@ -36,10 +36,10 @@ class WelcomeController extends Controller
 
         $baseQuery = $this->attachApprovedReviewStats(Product::with('category'))
             ->when(! $categoryIds || empty($categoryIds), function ($q) {
-            // Nếu chưa có lịch sử danh mục thì lấy random toàn site.
-        }, function ($q) use ($categoryIds) {
-            $q->whereIn('category_id', $categoryIds);
-        });
+                // Nếu chưa có lịch sử danh mục thì lấy random toàn site.
+            }, function ($q) use ($categoryIds) {
+                $q->whereIn('category_id', $categoryIds);
+            });
 
         if (! empty($chosenIds->all())) {
             $baseQuery->whereNotIn('id', $chosenIds->all());
@@ -257,7 +257,7 @@ class WelcomeController extends Controller
         $ratingMin = in_array((int) $ratingMinRaw, [1, 2, 3, 4, 5], true) ? (int) $ratingMinRaw : null;
         if ($ratingMin !== null) {
             $productsQuery->whereHas('reviews', fn ($rq) => $rq
-                ->where('is_approved', true)
+                ->publicVisible()
                 ->where('rating', '>=', $ratingMin));
         }
 
@@ -407,7 +407,7 @@ class WelcomeController extends Controller
         $ratingMin = in_array((int) $ratingMinRaw, [1, 2, 3, 4, 5], true) ? (int) $ratingMinRaw : null;
         if ($ratingMin !== null) {
             $query->whereHas('reviews', fn ($rq) => $rq
-                ->where('is_approved', true)
+                ->publicVisible()
                 ->where('rating', '>=', $ratingMin));
         }
 
@@ -447,10 +447,10 @@ class WelcomeController extends Controller
     {
         return $query
             ->withCount([
-                'reviews as approved_reviews_count' => fn ($rq) => $rq->where('is_approved', true),
+                'reviews as approved_reviews_count' => fn ($rq) => $rq->publicVisible(),
             ])
             ->withAvg([
-                'reviews as approved_reviews_avg_rating' => fn ($rq) => $rq->where('is_approved', true),
+                'reviews as approved_reviews_avg_rating' => fn ($rq) => $rq->publicVisible(),
             ], 'rating');
     }
 }

@@ -305,7 +305,7 @@
                             </div>
                         </div>
                         <div class="flash-sale-price-row" id="flash-sale-price-row">
-                            <div class="d-flex flex-column flex-sm-row flex-wrap align-items-stretch align-items-sm-end" style="gap: 0.75rem 1.5rem;">
+                            <div class="flash-sale-price-content">
                                 <div class="flash-sale-price-block">
                                     <span class="flash-sale-label text-muted text-uppercase">Giá Flash Sale</span>
                                     <span class="flash-sale-price d-block" id="flash-sale-price">
@@ -316,18 +316,7 @@
                                         @endif
                                     </span>
                                 </div>
-                                <div class="flash-sale-after-block">
-                                    <span class="flash-sale-label text-muted text-uppercase">Giá sau Flash Sale</span>
-                                    <span class="flash-sale-after-price d-block font-weight-bold text-dark" id="flash-sale-after-price">
-                                        @if($initialFlashVariant)
-                                            {{ number_format((float) $initialFlashVariant->price, 0, ',', '.') }}₫
-                                        @else
-                                            —
-                                        @endif
-                                    </span>
-                                    <span class="flash-sale-after-hint small text-muted">Áp dụng khi hết khung Flash Sale hoặc hết suất.</span>
-                                </div>
-                                <div class="align-self-sm-center ml-sm-auto">
+                                <div class="align-self-center">
                                     <span class="flash-sale-discount badge badge-light text-danger" id="flash-sale-discount" style="display:none;">-0%</span>
                                 </div>
                             </div>
@@ -336,25 +325,38 @@
                     <style>
                     .flash-sale-card { border-radius: 8px; overflow: hidden; box-shadow: 0 4px 14px rgba(0,0,0,0.1); border: 1px solid rgba(198,40,40,0.2); }
                     .flash-sale-banner { background: linear-gradient(90deg, #c62828 0%, #b71c1c 100%); padding: 0.5rem 1rem; }
-                    .flash-sale-title-inline .flash-sale-lightning-icon { flex-shrink: 0; margin: 0 -0.05rem 0 0.15rem; vertical-align: middle; }
-                    .flash-sale-title-inline .flash-sale-banner-title:last-child { margin-left: -0.45rem; }
+                    .flash-sale-title-inline { display: inline-flex; align-items: center; line-height: 1; }
+                    .flash-sale-title-inline .flash-sale-lightning-icon {
+                        width: 1em;
+                        height: 1em;
+                        flex-shrink: 0;
+                        margin: 0 0.08rem;
+                        display: inline-flex;
+                        align-items: center;
+                        justify-content: center;
+                        transform: translateY(-0.02em);
+                        vertical-align: middle;
+                    }
                     .flash-sale-banner-title { font-size: 1rem; letter-spacing: 0.02em; }
                     .flash-sale-clock-icon { flex-shrink: 0; color: #fff; }
                     .flash-sale-ends-label { font-size: 0.75rem; font-weight: 600; letter-spacing: 0.02em; display: inline-flex; align-items: center; height: 1.75rem; line-height: 1; }
                     .flash-sale-countdown-boxes { font-weight: 700; font-size: 1rem; }
                     .flash-sale-box { background: #1a1a1a; color: #fff; min-width: 2.25rem; height: 1.75rem; padding: 0 0.45rem; text-align: center; border-radius: 3px; display: inline-flex; align-items: center; justify-content: center; font-weight: 700; font-size: 1.15rem; }
                     .flash-sale-sep { color: #fff; margin: 0 0.1rem; font-weight: 700; }
-                    .flash-sale-price-row { background: #fff5f5; padding: 0.85rem 1rem; }
+                    .flash-sale-price-row { background: #fff5f5; padding: 0.65rem 1rem; }
+                    .flash-sale-price-content { display: flex; align-items: flex-end; justify-content: space-between; gap: 0.75rem; }
+                    .flash-sale-price-block { min-width: 0; }
                     .flash-sale-label { font-size: 0.65rem; font-weight: 700; letter-spacing: 0.06em; display: block; margin-bottom: 0.2rem; }
                     #product-price-wrap { background: #fff0f1; padding: 0.55rem 1rem; border-radius: 4px; }
                     .flash-sale-price { color: #dc3545; font-weight: 900; font-size: 1.45rem; letter-spacing: 0.01em; line-height: 1.2; }
-                    .flash-sale-after-price { font-size: 1.1rem; }
-                    .flash-sale-after-hint { display: block; margin-top: 0.15rem; max-width: 16rem; line-height: 1.3; }
                     .flash-sale-discount { font-weight: 800; font-size: 0.85rem; padding: 0.35rem 0.5rem; }
+                    @media (max-width: 575.98px) {
+                        .flash-sale-price-content { align-items: center; }
+                    }
                     </style>
                     @endif
 
-                    <div class="mb-3" id="product-price-wrap" @if($hasVariants && $anyFlashOnProduct) style="display:none;" @endif>
+                    <div class="mb-3" id="product-price-wrap" @if($hasVariants && $showFlashCountdown) style="display:none;" @endif>
                         @if($product->old_price !== null)
                             <span class="text-muted mr-2" id="product-old-price" style="text-decoration: line-through; font-size: 1rem;">{{ number_format($product->old_price, 0, ',', '.') }}₫</span>
                         @endif
@@ -692,15 +694,27 @@ window.productHasVariants = true;
     var priceEl = document.getElementById('product-price');
     var priceWrapEl = document.getElementById('product-price-wrap');
     var flashCardEl = document.getElementById('flash-sale-card');
+    var flashSaleActiveNow = !!flashSaleEndTime && (new Date(flashSaleEndTime).getTime() > Date.now());
 
     function formatMoneyVn(value) {
         var n = Number(value);
         if (!Number.isFinite(n)) n = 0;
         return n.toLocaleString('vi-VN') + '₫';
     }
+    function hasUsableFlash(v) {
+        return !!(flashSaleActiveNow && v && v.flash_price != null && (v.flash_remaining || 0) > 0);
+    }
+    function getEffectiveStock(v) {
+        if (!v) return 0;
+        if (hasUsableFlash(v)) return Math.min(v.stock || 0, v.flash_remaining || 0);
+        return v.stock || 0;
+    }
+    function getEffectivePrice(v) {
+        if (!v) return 0;
+        return hasUsableFlash(v) ? v.flash_price : v.price;
+    }
     var flashPriceRow = document.getElementById('flash-sale-price-row');
     var flashPriceEl = document.getElementById('flash-sale-price');
-    var flashAfterPriceEl = document.getElementById('flash-sale-after-price');
     var flashDiscountEl = document.getElementById('flash-sale-discount');
     var variantInput = document.getElementById('product_variant_id');
     var stockEl = document.getElementById('variant-stock');
@@ -716,7 +730,7 @@ window.productHasVariants = true;
         if (!form || !btn || !vidInput) return;
         var v = findVariant();
         if (v) {
-            var effectiveStock = (v.flash_remaining != null && v.flash_remaining > 0) ? Math.min(v.stock, v.flash_remaining) : v.stock;
+            var effectiveStock = getEffectiveStock(v);
             vidInput.value = v.id;
             if (effectiveStock < 1) {
                 form.style.display = 'inline';
@@ -791,9 +805,7 @@ window.productHasVariants = true;
                 }
             }
             if (otherMatch && v.attr[attrName]) {
-                var effectiveStock = (v.flash_remaining != null && v.flash_remaining > 0)
-                    ? Math.min(v.stock || 0, v.flash_remaining)
-                    : (v.stock || 0);
+                var effectiveStock = getEffectiveStock(v);
                 if (effectiveStock > 0) {
                     available[v.attr[attrName]] = true;
                 }
@@ -855,18 +867,15 @@ window.productHasVariants = true;
         var qtyPlusBtn = document.getElementById('product-qty-plus');
         if (v) {
             variantInput.value = v.id;
-            var effectivePrice = (v.flash_price != null && v.flash_remaining > 0) ? v.flash_price : v.price;
-            var effectiveStock = (v.flash_remaining != null && v.flash_remaining > 0) ? Math.min(v.stock, v.flash_remaining) : v.stock;
+            var effectivePrice = getEffectivePrice(v);
+            var effectiveStock = getEffectiveStock(v);
             priceEl.textContent = formatMoneyVn(effectivePrice);
-            if (v.flash_price != null && v.flash_remaining > 0) priceEl.classList.add('text-danger'); else priceEl.classList.remove('text-danger');
+            if (hasUsableFlash(v)) priceEl.classList.add('text-danger'); else priceEl.classList.remove('text-danger');
             if (flashPriceRow && flashPriceEl) {
-                if (v.flash_price != null && v.flash_remaining > 0) {
+                if (hasUsableFlash(v)) {
                     if (flashCardEl) flashCardEl.style.display = '';
                     flashPriceRow.style.display = '';
                     flashPriceEl.textContent = formatMoneyVn(effectivePrice);
-                    if (flashAfterPriceEl) {
-                        flashAfterPriceEl.textContent = formatMoneyVn(v.price);
-                    }
                     if (flashDiscountEl) {
                         var pct = v.price > 0 ? Math.round((1 - (effectivePrice / v.price)) * 100) : 0;
                         pct = Math.max(0, Math.min(99, pct));
@@ -894,7 +903,7 @@ window.productHasVariants = true;
             }
             if (qtyMinusBtn) qtyMinusBtn.disabled = false;
             if (qtyPlusBtn) qtyPlusBtn.disabled = false;
-            var displayStock = (v.flash_remaining != null && v.flash_remaining > 0) ? Math.min(v.stock, v.flash_remaining) : v.stock;
+            var displayStock = getEffectiveStock(v);
             if (stockLabel) {
                 stockLabel.textContent = displayStock.toLocaleString('vi-VN') + ' SẢN PHẨM CÓ SẴN';
                 stockLabel.classList.add('product-stock-status');
@@ -922,16 +931,13 @@ window.productHasVariants = true;
                 // Chưa chọn đủ thuộc tính: vẫn hiển thị giá flash tham chiếu (nếu có).
                 var firstFlash = null;
                 for (var i = 0; i < variants.length; i++) {
-                    if (variants[i].flash_price != null && variants[i].flash_remaining > 0) { firstFlash = variants[i]; break; }
+                    if (hasUsableFlash(variants[i])) { firstFlash = variants[i]; break; }
                 }
                 if (firstFlash) {
                     var eff = firstFlash.flash_price;
                     if (flashCardEl) flashCardEl.style.display = '';
                     flashPriceRow.style.display = '';
                     flashPriceEl.textContent = formatMoneyVn(eff);
-                    if (flashAfterPriceEl) {
-                        flashAfterPriceEl.textContent = formatMoneyVn(firstFlash.price);
-                    }
                     if (flashDiscountEl) {
                         var pct = firstFlash.price > 0 ? Math.round((1 - (eff / firstFlash.price)) * 100) : 0;
                         pct = Math.max(0, Math.min(99, pct));
@@ -957,7 +963,7 @@ window.productHasVariants = true;
                     var sumLabel = 0;
                     variants.forEach(function(vv) {
                         if ((vv.attr[colorAttrName] || '') !== selectedColor) return;
-                        var effStock = (vv.flash_remaining != null && vv.flash_remaining > 0) ? Math.min(vv.stock || 0, vv.flash_remaining) : (vv.stock || 0);
+                        var effStock = getEffectiveStock(vv);
                         sumLabel += effStock;
                     });
                     stockLabel.textContent = (sumLabel > 0 ? sumLabel.toLocaleString('vi-VN') + ' SẢN PHẨM CÓ SẴN' : 'HẾT HÀNG');
@@ -1104,21 +1110,29 @@ updateArrowState();
                 var now = new Date().getTime();
                 var distance = currentEndTime - now;
                 if (distance <= 0) {
+                    flashSaleActiveNow = false;
+                    updateState();
                     if (countdownTimerId) { clearInterval(countdownTimerId); countdownTimerId = null; }
                     fetch(flashSaleApiUrl).then(function(r) { return r.json(); }).then(function(data) {
                         if (data.current) {
                             currentEndTime = new Date(data.current.end_time).getTime();
+                            flashSaleActiveNow = currentEndTime > Date.now();
                         } else {
+                            flashSaleActiveNow = false;
                             setCountdownNum(hEl, 0);
                             setCountdownNum(mEl, 0);
                             setCountdownNum(sEl, 0);
                         }
+                        updateState();
                         countdownTimerId = setInterval(runCountdown, 1000);
                     }).catch(function() {
+                        flashSaleActiveNow = false;
+                        updateState();
                         countdownTimerId = setInterval(runCountdown, 1000);
                     });
                     return;
                 }
+                flashSaleActiveNow = true;
                 var hours = Math.floor((distance / (1000 * 60 * 60)) % 24);
                 var minutes = Math.floor((distance / (1000 * 60)) % 60);
                 var seconds = Math.floor((distance / 1000) % 60);

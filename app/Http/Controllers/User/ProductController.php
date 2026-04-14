@@ -65,7 +65,7 @@ class ProductController extends Controller
 
         $baseReviewsQuery = \App\Models\ProductReview::query()
             ->where('product_id', $product->id)
-            ->where('is_approved', true);
+            ->publicVisible();
 
         $ratingFilterRaw = $request->query('rating');
         $ratingFilter = in_array((int) $ratingFilterRaw, [1, 2, 3, 4, 5], true) ? (int) $ratingFilterRaw : null;
@@ -178,7 +178,7 @@ class ProductController extends Controller
             $previewShippingFee = $calc['fee'];
             if ($previewDistanceKm === null) {
                 $previewShippingHint = Auth::check()
-                    ? 'Thêm tọa độ địa chỉ trên bản đồ để xem phí ship & ngày giao chính xác hơn.'
+                    ? 'Thêm tọa độ địa chỉ trên bản đồ để xem phí vận chuyển & ngày giao chính xác hơn.'
                     : 'Đăng nhập và lưu địa chỉ giao hàng để ước tính chính xác hơn.';
             }
         }
