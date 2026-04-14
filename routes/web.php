@@ -12,6 +12,7 @@ use App\Http\Controllers\Staff\DashboardController as StaffDashboardController;
 use App\Http\Controllers\Staff\InventoryAdjustmentController as StaffInventoryAdjustmentController;
 use App\Http\Controllers\Staff\InventoryLogController as StaffInventoryLogController;
 use App\Http\Controllers\Staff\OrderController as StaffOrderController;
+use App\Http\Controllers\Staff\ProfileController as StaffProfileController;
 use App\Http\Controllers\Staff\ProductReviewController as StaffProductReviewController;
 use App\Http\Controllers\User\AiChatController;
 use App\Http\Controllers\User\AuthController;
@@ -141,7 +142,17 @@ Route::post('login', [AuthController::class, 'login']);
 Route::post('logout', [AuthController::class, 'logout'])->name('logout');
 Route::get('auth/google', [AuthController::class, 'redirectToGoogle'])->name('auth.google');
 Route::get('auth/google/callback', [AuthController::class, 'handleGoogleCallback'])->name('auth.google.callback');
+Route::get('/account/restore', [AuthController::class, 'showRestorePrompt'])->name('account.restore.notice');
+Route::post('/account/restore/start', [AuthController::class, 'startRestoreOtp'])->name('account.restore.start');
+Route::post('/account/restore/cancel', [AuthController::class, 'cancelRestore'])->name('account.restore.cancel');
+Route::get('/account/restore/otp', [AuthController::class, 'showRestoreOtpForm'])->name('account.restore.otp.notice');
+Route::post('/account/restore/otp', [AuthController::class, 'verifyRestoreOtp'])->name('account.restore.otp.verify');
+Route::post('/account/restore/otp/resend', [AuthController::class, 'resendRestoreOtp'])->name('account.restore.otp.resend');
 Route::middleware(['auth'])->group(function () {
+    Route::get('/register/complete-name', [AuthController::class, 'showCompleteNameForm'])->name('register.complete-name');
+    Route::post('/register/complete-name', [AuthController::class, 'completeName'])->name('register.complete-name.submit');
+    Route::get('/register/setup-avatar', [AuthController::class, 'showAvatarSetupForm'])->name('register.setup-avatar');
+    Route::post('/register/setup-avatar', [AuthController::class, 'completeAvatar'])->name('register.setup-avatar.submit');
     Route::get('/email/verify-otp', [AuthController::class, 'showVerifyOtpForm'])->name('verification.otp.notice');
     Route::post('/email/verify-otp', [AuthController::class, 'verifyOtp'])->name('verification.otp.verify');
     Route::post('/email/verify-otp/resend', [AuthController::class, 'resendOtp'])->name('verification.otp.resend');
@@ -151,6 +162,17 @@ Route::middleware(['auth'])->group(function () {
 Route::namespace('App\Http\Controllers\User')->middleware(['auth', 'email.verified.otp'])->group(function () {
     Route::get('/profile', 'ProfileController@profile')->name('profile');
     Route::put('/profile', 'ProfileController@profileUpdate')->name('profile.update');
+    Route::get('/profile/delete/confirm', 'ProfileController@showDeleteConfirm')->name('profile.delete.confirm');
+    Route::post('/profile/delete/confirm', 'ProfileController@startDeleteOtp')->name('profile.delete.start');
+    Route::get('/profile/delete/otp', 'ProfileController@showDeleteOtpForm')->name('profile.delete.otp.notice');
+    Route::post('/profile/delete/otp', 'ProfileController@verifyDeleteOtp')->name('profile.delete.otp.verify');
+    Route::post('/profile/delete/otp/resend', 'ProfileController@resendDeleteOtp')->name('profile.delete.otp.resend');
+    Route::post('/profile/password/otp/start', 'ProfileController@startPasswordOtp')->name('profile.password.otp.start');
+    Route::get('/profile/password/otp', 'ProfileController@showPasswordOtpForm')->name('profile.password.otp.notice');
+    Route::post('/profile/password/otp', 'ProfileController@verifyPasswordOtp')->name('profile.password.otp.verify');
+    Route::post('/profile/password/otp/resend', 'ProfileController@resendPasswordOtp')->name('profile.password.otp.resend');
+    Route::get('/profile/password/change', 'ProfileController@showPasswordForm')->name('profile.password.form');
+    Route::put('/profile/password/change', 'ProfileController@updatePassword')->name('profile.password.update');
     Route::get('/addresses', 'AddressController@index')->name('addresses.index');
     Route::get('/addresses/create', 'AddressController@create')->name('addresses.create');
     Route::post('/addresses', 'AddressController@store')->name('addresses.store');
@@ -250,6 +272,17 @@ Route::middleware(['auth', 'email.verified.otp', 'admin'])->prefix('admin')->nam
         Route::resource('/search-synonyms', 'SearchSynonymController', ['parameters' => ['search-synonyms' => 'search_synonym']]);
         Route::get('/profile', 'ProfileController@edit')->name('profile.edit');
         Route::put('/profile', 'ProfileController@update')->name('profile.update');
+        Route::get('/profile/delete/confirm', 'ProfileController@showDeleteConfirm')->name('profile.delete.confirm');
+        Route::post('/profile/delete/confirm', 'ProfileController@startDeleteOtp')->name('profile.delete.start');
+        Route::get('/profile/delete/otp', 'ProfileController@showDeleteOtpForm')->name('profile.delete.otp.notice');
+        Route::post('/profile/delete/otp', 'ProfileController@verifyDeleteOtp')->name('profile.delete.otp.verify');
+        Route::post('/profile/delete/otp/resend', 'ProfileController@resendDeleteOtp')->name('profile.delete.otp.resend');
+        Route::post('/profile/password/otp/start', 'ProfileController@startPasswordOtp')->name('profile.password.otp.start');
+        Route::get('/profile/password/otp', 'ProfileController@showPasswordOtpForm')->name('profile.password.otp.notice');
+        Route::post('/profile/password/otp', 'ProfileController@verifyPasswordOtp')->name('profile.password.otp.verify');
+        Route::post('/profile/password/otp/resend', 'ProfileController@resendPasswordOtp')->name('profile.password.otp.resend');
+        Route::get('/profile/password/change', 'ProfileController@showPasswordForm')->name('profile.password.form');
+        Route::put('/profile/password/change', 'ProfileController@updatePassword')->name('profile.password.update');
     });
 
 });
@@ -258,6 +291,19 @@ Route::middleware(['auth', 'email.verified.otp', 'staff'])->prefix('staff')->nam
     Route::post('/logout', [StaffAuthController::class, 'logout'])->name('logout');
     Route::get('/dashboard', [StaffDashboardController::class, 'dashboard'])->name('dashboard');
     Route::get('/activity-log', [StaffActivityLogController::class, 'index'])->name('activity-log.index');
+    Route::get('/profile', [StaffProfileController::class, 'edit'])->name('profile.edit');
+    Route::put('/profile', [StaffProfileController::class, 'update'])->name('profile.update');
+    Route::get('/profile/delete/confirm', [StaffProfileController::class, 'showDeleteConfirm'])->name('profile.delete.confirm');
+    Route::post('/profile/delete/confirm', [StaffProfileController::class, 'startDeleteOtp'])->name('profile.delete.start');
+    Route::get('/profile/delete/otp', [StaffProfileController::class, 'showDeleteOtpForm'])->name('profile.delete.otp.notice');
+    Route::post('/profile/delete/otp', [StaffProfileController::class, 'verifyDeleteOtp'])->name('profile.delete.otp.verify');
+    Route::post('/profile/delete/otp/resend', [StaffProfileController::class, 'resendDeleteOtp'])->name('profile.delete.otp.resend');
+    Route::post('/profile/password/otp/start', [StaffProfileController::class, 'startPasswordOtp'])->name('profile.password.otp.start');
+    Route::get('/profile/password/otp', [StaffProfileController::class, 'showPasswordOtpForm'])->name('profile.password.otp.notice');
+    Route::post('/profile/password/otp', [StaffProfileController::class, 'verifyPasswordOtp'])->name('profile.password.otp.verify');
+    Route::post('/profile/password/otp/resend', [StaffProfileController::class, 'resendPasswordOtp'])->name('profile.password.otp.resend');
+    Route::get('/profile/password/change', [StaffProfileController::class, 'showPasswordForm'])->name('profile.password.form');
+    Route::put('/profile/password/change', [StaffProfileController::class, 'updatePassword'])->name('profile.password.update');
 
     Route::middleware('staff.permission:orders')->group(function () {
         Route::get('/orders', [StaffOrderController::class, 'index'])->name('orders.index');
