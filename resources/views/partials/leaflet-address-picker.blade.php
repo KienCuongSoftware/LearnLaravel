@@ -202,7 +202,7 @@
     };
     setTimeout(function() { map.invalidateSize(); }, 300);
 
-    // Đồng bộ hidden lat/lng với marker lúc khởi tạo (gọi phí ship checkout; tránh chỉ .value không bắn sự kiện).
+    // Đồng bộ hidden lat/lng với marker lúc khởi tạo (gọi phí vận chuyển checkout; tránh chỉ .value không bắn sự kiện).
     if (!latInput.value || !lngInput.value) {
         setLatLngValues(initialLat, initialLng);
     } else {

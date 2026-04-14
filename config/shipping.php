@@ -13,7 +13,7 @@ return [
 
     /*
     |--------------------------------------------------------------------------
-    | Bảng phí ship theo khoảng cách (km)
+    | Bảng phí vận chuyển theo khoảng cách (km)
     | Mỗi mục: [ 'max_km' => km, 'fee' => VNĐ ]
     | Thứ tự tăng dần max_km. Áp dụng fee của tier có max_km >= khoảng cách thực tế.
     |--------------------------------------------------------------------------

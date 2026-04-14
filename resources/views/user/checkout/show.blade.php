@@ -137,7 +137,7 @@
                         <span id="after-discount-amount">{{ number_format($subtotalAfterDiscount ?? ($subtotal ?? 0), 0, ',', '.') }}₫</span>
                     </div>
                     <div class="d-flex justify-content-between align-items-center mb-2">
-                        <span>Phí ship</span>
+                        <span>Phí vận chuyển</span>
                         <span id="shipping-fee-amount">—</span>
                     </div>
                     <div class="d-flex justify-content-between align-items-center font-weight-bold text-danger h5 mb-0">

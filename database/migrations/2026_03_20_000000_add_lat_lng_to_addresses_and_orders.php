@@ -7,7 +7,7 @@ use Illuminate\Support\Facades\Schema;
 return new class extends Migration
 {
     /**
-     * Thêm lat/lng cho địa chỉ (map) và đơn hàng (tính phí ship theo khoảng cách).
+     * Thêm lat/lng cho địa chỉ (map) và đơn hàng (tính phí vận chuyển theo khoảng cách).
      */
     public function up(): void
     {

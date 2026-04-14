@@ -514,7 +514,7 @@ CREATE TABLE `orders` (
   `address_id` bigint unsigned DEFAULT NULL,
   `status` enum('unpaid','payment_failed','pending','processing','shipping','awaiting_delivery','completed','cancelled','return_refund','pending_payment') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'pending',
   `total_amount` decimal(15,0) NOT NULL DEFAULT '0',
-  `shipping_fee` int unsigned NOT NULL DEFAULT '0' COMMENT 'Phí ship (VNĐ)',
+  `shipping_fee` int unsigned NOT NULL DEFAULT '0' COMMENT 'Phí vận chuyển (VNĐ)',
   `shipping_distance_km` decimal(8,2) DEFAULT NULL COMMENT 'Khoảng cách từ kho đến địa chỉ giao (km)',
   `shipping_address_snapshot` varchar(500) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `lat` decimal(10,7) DEFAULT NULL,

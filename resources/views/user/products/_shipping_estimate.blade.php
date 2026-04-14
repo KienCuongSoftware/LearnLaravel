@@ -25,9 +25,9 @@
             </div>
             <div class="product-shipping-estimate__line2">
                 @if($fee <= 0)
-                    Phí ship <span class="font-weight-bold text-success">0₫</span>
+                    Phí vận chuyển <span class="font-weight-bold text-success">0₫</span>
                 @else
-                    Phí ship <span class="font-weight-bold">{{ number_format($fee, 0, ',', '.') }}₫</span>
+                    Phí vận chuyển <span class="font-weight-bold">{{ number_format($fee, 0, ',', '.') }}₫</span>
                 @endif
                 @if($preview['distance_km'] !== null)
                     <span class="text-muted small">· {{ number_format((float) $preview['distance_km'], 1, ',', '.') }} km</span>

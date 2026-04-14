@@ -22,11 +22,12 @@ class ShippingFeeService
         $dLng = $lng2 - $lng1;
         $a = sin($dLat / 2) ** 2 + cos($lat1) * cos($lat2) * sin($dLng / 2) ** 2;
         $c = 2 * atan2(sqrt($a), sqrt(1 - $a));
+
         return round((self::EARTH_RADIUS_KM * $c), 2);
     }
 
     /**
-     * Tính phí ship (VNĐ) và khoảng cách (km) từ kho đến địa chỉ giao.
+     * Tính phí vận chuyển (VNĐ) và khoảng cách (km) từ kho đến địa chỉ giao.
      * Trả về ['fee' => int, 'distance_km' => float].
      * Nếu không có tọa độ: dùng phí mặc định, distance_km = null.
      */

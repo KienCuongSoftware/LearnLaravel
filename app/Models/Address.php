@@ -45,7 +45,7 @@ class Address extends Model
         return implode(', ', $parts) ?: (string) $this->address_line;
     }
 
-    /** Có tọa độ map (dùng cho tính phí ship). */
+    /** Có tọa độ map (dùng cho tính phí vận chuyển). */
     public function hasCoordinates(): bool
     {
         return $this->lat !== null && $this->lng !== null;
