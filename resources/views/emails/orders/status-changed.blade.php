@@ -32,6 +32,9 @@
 
     @if($previousStatus === null)
         <p>Cảm ơn bạn đã đặt hàng tại NovaShop. Chúng tôi đã ghi nhận đơn <strong>#{{ $order->id }}</strong>.</p>
+    @elseif($previousStatus !== null && $previousStatus === $currentStatus)
+        <p>Đơn hàng <strong>#{{ $order->id }}</strong> — xác nhận / nhắc lại trạng thái: <strong>{{ \App\Models\Order::statusLabel($currentStatus) }}</strong>.</p>
+        <p class="muted" style="margin: 12px 0;">(Email do nhân viên cửa hàng gửi lại cho bạn.)</p>
     @else
         <p>Đơn hàng <strong>#{{ $order->id }}</strong> của bạn vừa được cập nhật trạng thái.</p>
         <p class="muted" style="margin: 12px 0;">

@@ -15,6 +15,12 @@ class DashboardController extends Controller
         $pendingReviews = ProductReview::query()->where('is_approved', false)->count();
         $ordersToday = Order::query()->whereDate('created_at', today())->count();
 
+        $pendingOrdersCount = Order::query()->where('status', Order::STATUS_PENDING)->count();
+        $reviewsPendingOver24h = ProductReview::query()
+            ->where('is_approved', false)
+            ->where('created_at', '<', now()->subDay())
+            ->count();
+
         $chartLast7Labels = [];
         $chartLast7Counts = [];
         for ($i = 6; $i >= 0; $i--) {
@@ -33,6 +39,8 @@ class DashboardController extends Controller
         return view('staff.dashboard.index', compact(
             'pendingReviews',
             'ordersToday',
+            'pendingOrdersCount',
+            'reviewsPendingOver24h',
             'chartLast7Labels',
             'chartLast7Counts',
             'chartStatusLabels',

@@ -9,7 +9,35 @@
 
 <p class="text-muted mb-4">Chào <strong>{{ auth()->user()->name }}</strong>. Chọn nhanh tác vụ thường dùng:</p>
 
+<div class="row mb-3">
+    <div class="col-sm-6 col-lg-4 mb-2">
+        <div class="card shadow-sm h-100 border-left-danger" style="border-left-width: 4px;">
+            <div class="card-body py-3">
+                <div class="small text-muted">Đơn chờ xử lý</div>
+                <div class="h4 mb-0">{{ number_format($pendingOrdersCount) }}</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-sm-6 col-lg-4 mb-2">
+        <div class="card shadow-sm h-100">
+            <div class="card-body py-3">
+                <div class="small text-muted">Đánh giá chờ &gt; 24h</div>
+                <div class="h4 mb-0 {{ $reviewsPendingOver24h > 0 ? 'text-danger' : '' }}">{{ number_format($reviewsPendingOver24h) }}</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-sm-6 col-lg-4 mb-2">
+        <div class="card shadow-sm h-100">
+            <div class="card-body py-3">
+                <div class="small text-muted">Đơn tạo hôm nay</div>
+                <div class="h4 mb-0">{{ number_format($ordersToday) }}</div>
+            </div>
+        </div>
+    </div>
+</div>
+
 <div class="row">
+    @if(auth()->user()->staffCanOrders())
     <div class="col-md-4 mb-3">
         <div class="card shadow-sm h-100">
             <div class="card-body">
@@ -19,6 +47,8 @@
             </div>
         </div>
     </div>
+    @endif
+    @if(auth()->user()->staffCanReviews())
     <div class="col-md-4 mb-3">
         <div class="card shadow-sm h-100">
             <div class="card-body">
@@ -28,16 +58,22 @@
             </div>
         </div>
     </div>
+    @endif
+    @if(auth()->user()->staffCanInventory())
     <div class="col-md-4 mb-3">
         <div class="card shadow-sm h-100">
             <div class="card-body">
                 <h5 class="card-title">Nhập / xuất kho</h5>
-                <p class="card-text text-muted small mb-2">Xem lịch sử thay đổi tồn kho.</p>
+                <p class="card-text text-muted small mb-2">Nhật ký & điều chỉnh thủ công.</p>
                 <a href="{{ route('staff.inventory-logs.index') }}" class="btn btn-primary btn-sm">Mở nhật ký</a>
+                <a href="{{ route('staff.inventory.adjust') }}" class="btn btn-outline-primary btn-sm mt-1">Nhập/xuất tay</a>
             </div>
         </div>
     </div>
+    @endif
 </div>
+
+<p class="small text-muted mb-2"><a href="{{ route('staff.activity-log.index') }}">Nhật ký hoạt động nhân viên →</a></p>
 
 <div class="row mt-2">
     <div class="col-lg-6 mb-3">

@@ -3,17 +3,28 @@
 @section('title', 'Đơn hàng')
 
 @section('content')
+@php
+    $baseQuery = array_filter([
+        'shipping_status' => $shippingStatus ?? 'all',
+        'q' => trim((string) ($q ?? '')) !== '' ? $q : null,
+        'date_from' => $dateFrom ?? null,
+        'date_to' => $dateTo ?? null,
+    ], fn ($v) => $v !== null && $v !== '');
+@endphp
 <div class="page-header">
     <h2>Đơn hàng</h2>
+    <div class="admin-toolbar">
+        <a href="{{ route('staff.orders.export', request()->query()) }}" class="btn btn-outline-primary btn-sm">Xuất CSV</a>
+    </div>
 </div>
 
 <ul class="nav nav-tabs mb-2">
     <li class="nav-item">
-        <a class="nav-link {{ ($status ?? 'all') === 'all' ? 'active' : '' }}" href="{{ route('staff.orders.index', array_filter(['status' => 'all', 'shipping_status' => $shippingStatus ?? 'all', 'q' => $q ?? ''])) }}">Tất cả</a>
+        <a class="nav-link {{ ($status ?? 'all') === 'all' ? 'active' : '' }}" href="{{ route('staff.orders.index', array_merge($baseQuery, ['status' => 'all'])) }}">Tất cả</a>
     </li>
     @foreach(\App\Models\Order::tabStatusKeys() as $key)
     <li class="nav-item">
-        <a class="nav-link {{ ($status ?? '') === $key ? 'active' : '' }}" href="{{ route('staff.orders.index', array_filter(['status' => $key, 'shipping_status' => $shippingStatus ?? 'all', 'q' => $q ?? ''])) }}">{{ \App\Models\Order::statusLabel($key) }}</a>
+        <a class="nav-link {{ ($status ?? '') === $key ? 'active' : '' }}" href="{{ route('staff.orders.index', array_merge($baseQuery, ['status' => $key])) }}">{{ \App\Models\Order::statusLabel($key) }}</a>
     </li>
     @endforeach
 </ul>
@@ -21,6 +32,12 @@
     <input type="hidden" name="status" value="{{ $status ?? 'all' }}">
     @if(trim((string) ($q ?? '')) !== '')
         <input type="hidden" name="q" value="{{ $q }}">
+    @endif
+    @if(!empty($dateFrom))
+        <input type="hidden" name="date_from" value="{{ $dateFrom }}">
+    @endif
+    @if(!empty($dateTo))
+        <input type="hidden" name="date_to" value="{{ $dateTo }}">
     @endif
     <label for="staff-order-shipping-filter" class="mb-0 small font-weight-bold text-secondary">Lọc nâng cao</label>
     <select name="shipping_status" id="staff-order-shipping-filter" class="form-control form-control-sm" style="max-width: 260px;" onchange="this.form.submit()">
@@ -33,9 +50,31 @@
 
 <div class="card mb-3">
     <div class="card-body py-3">
+        <form method="GET" action="{{ route('staff.orders.index') }}" class="d-flex flex-wrap align-items-end mb-3" style="gap: 0.75rem;">
+            <input type="hidden" name="status" value="{{ $status ?? 'all' }}">
+            <input type="hidden" name="shipping_status" value="{{ $shippingStatus ?? 'all' }}">
+            @if(trim((string) ($q ?? '')) !== '')
+                <input type="hidden" name="q" value="{{ $q }}">
+            @endif
+            <div>
+                <label class="small font-weight-bold text-secondary d-block mb-1">Từ ngày</label>
+                <input type="date" name="date_from" class="form-control form-control-sm" value="{{ $dateFrom ?? '' }}">
+            </div>
+            <div>
+                <label class="small font-weight-bold text-secondary d-block mb-1">Đến ngày</label>
+                <input type="date" name="date_to" class="form-control form-control-sm" value="{{ $dateTo ?? '' }}">
+            </div>
+            <button type="submit" class="btn btn-sm btn-primary">Lọc theo ngày</button>
+        </form>
         <form action="{{ route('staff.orders.index') }}" method="GET" class="admin-search-form d-flex flex-wrap align-items-center" style="gap: 0.5rem;">
             <input type="hidden" name="status" value="{{ $status ?? 'all' }}">
             <input type="hidden" name="shipping_status" value="{{ $shippingStatus ?? 'all' }}">
+            @if(!empty($dateFrom))
+                <input type="hidden" name="date_from" value="{{ $dateFrom }}">
+            @endif
+            @if(!empty($dateTo))
+                <input type="hidden" name="date_to" value="{{ $dateTo }}">
+            @endif
             <input type="text" name="q" class="form-control" style="max-width: 280px;" placeholder="ID đơn, SĐT, địa chỉ, tên/email khách..." value="{{ $q ?? '' }}">
             <button type="submit" class="btn btn-primary">Tìm kiếm</button>
         </form>

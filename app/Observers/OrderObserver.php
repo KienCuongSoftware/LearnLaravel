@@ -21,6 +21,7 @@ class OrderObserver
     {
         if ($order->exists && $order->isDirty('status')) {
             self::$previousStatusByOrderId[(int) $order->getKey()] = $order->getOriginal('status');
+            $order->status_changed_at = now();
         }
     }
 

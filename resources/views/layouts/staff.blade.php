@@ -10,7 +10,15 @@
     @stack('styles')
     <style>
         body { overflow-x: hidden; }
-        .admin-wrapper { display: flex; min-height: 100vh; }
+        @media (max-width: 991.98px) {
+            .admin-sidebar { width: 100%; min-width: 100%; height: auto; position: relative; }
+            .admin-main { margin-left: 0 !important; padding: 1rem !important; }
+            .alert-toast-container { left: 1rem !important; }
+        }
+        .admin-wrapper { display: flex; min-height: 100vh; flex-direction: row; }
+        @media (max-width: 991.98px) {
+            .admin-wrapper { flex-direction: column; }
+        }
         .admin-sidebar {
             width: 250px;
             min-width: 250px;
@@ -182,14 +190,29 @@
                 <a class="nav-link {{ request()->routeIs('staff.dashboard') ? 'active' : '' }}" href="{{ route('staff.dashboard') }}">
                     Trang làm việc
                 </a>
+                @if(auth()->user()->staffCanOrders())
                 <a class="nav-link {{ request()->routeIs('staff.orders.*') ? 'active' : '' }}" href="{{ route('staff.orders.index') }}">
                     Đơn hàng
                 </a>
+                @endif
+                @if(auth()->user()->staffCanReviews())
                 <a class="nav-link {{ request()->routeIs('staff.product-reviews.*') ? 'active' : '' }}" href="{{ route('staff.product-reviews.index') }}">
                     Duyệt đánh giá
                 </a>
+                @endif
+                @if(auth()->user()->staffCanInventory())
                 <a class="nav-link {{ request()->routeIs('staff.inventory-logs.*') ? 'active' : '' }}" href="{{ route('staff.inventory-logs.index') }}">
-                    Nhập/xuất kho
+                    Nhật ký kho
+                </a>
+                <a class="nav-link {{ request()->routeIs('staff.inventory.adjust*') ? 'active' : '' }}" href="{{ route('staff.inventory.adjust') }}">
+                    Nhập/xuất tay
+                </a>
+                @endif
+                <a class="nav-link {{ request()->routeIs('staff.activity-log.*') ? 'active' : '' }}" href="{{ route('staff.activity-log.index') }}">
+                    Nhật ký hoạt động
+                </a>
+                <a class="nav-link {{ request()->routeIs('staff.profile.*') ? 'active' : '' }}" href="{{ route('staff.profile.edit') }}">
+                    Hồ sơ tài khoản
                 </a>
                 <div class="nav-divider"></div>
                 <a class="nav-link" href="{{ route('staff.logout') }}" onclick="event.preventDefault(); document.getElementById('staff-logout-form').submit();">

@@ -5,8 +5,19 @@
 @section('content')
 <div class="page-header d-flex justify-content-between align-items-center flex-wrap">
     <h2 class="mb-0">Duyệt đánh giá sản phẩm</h2>
-    <a class="btn btn-outline-primary" href="{{ route('staff.dashboard') }}">Quay lại</a>
+    <div class="d-flex flex-wrap" style="gap:0.5rem;">
+        <a class="btn btn-outline-primary btn-sm" href="{{ route('staff.product-reviews.published') }}">Đánh giá đã duyệt</a>
+        <a class="btn btn-outline-secondary btn-sm" href="{{ route('staff.dashboard') }}">Dashboard</a>
+    </div>
 </div>
+
+@if(isset($rejectionTemplates) && $rejectionTemplates->isNotEmpty())
+<datalist id="staff-reject-templates">
+    @foreach($rejectionTemplates as $t)
+        <option value="{{ $t->body }}">{{ $t->label }}</option>
+    @endforeach
+</datalist>
+@endif
 
 <div class="card mt-3">
     <div class="card-body">
@@ -102,8 +113,9 @@
                                                 type="text"
                                                 name="reason"
                                                 class="form-control form-control-sm"
-                                                placeholder="Lý do (tuỳ chọn)"
+                                                placeholder="Lý do (tuỳ chọn) — gõ hoặc chọn gợi ý"
                                                 maxlength="500"
+                                                @if(isset($rejectionTemplates) && $rejectionTemplates->isNotEmpty()) list="staff-reject-templates" @endif
                                             >
                                         </div>
                                         <button type="submit" class="btn btn-sm btn-outline-danger font-weight-bold mb-1">Từ chối</button>

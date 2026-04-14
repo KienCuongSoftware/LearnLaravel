@@ -7,6 +7,29 @@
     <h2>Đơn hàng #{{ $order->id }}</h2>
     <div class="admin-toolbar">
         <a href="{{ route('staff.orders.index') }}" class="btn btn-outline-secondary">← Danh sách đơn</a>
+        <a href="{{ route('staff.orders.print', $order) }}" target="_blank" rel="noopener" class="btn btn-outline-primary btn-sm">In phiếu</a>
+        <a href="{{ route('staff.orders.pdf', $order) }}" class="btn btn-outline-primary btn-sm">Tải PDF</a>
+        <form action="{{ route('staff.orders.resend-email', $order) }}" method="POST" class="d-inline" onsubmit="return bsConfirmSubmit(this, 'Gửi lại email trạng thái đơn tới khách?');">
+            @csrf
+            <button type="submit" class="btn btn-outline-primary btn-sm">Gửi lại email</button>
+        </form>
+        <form action="{{ route('staff.orders.sms', $order) }}" method="POST" class="d-inline" onsubmit="return bsConfirmSubmit(this, 'Thử gửi SMS (cần cấu hình STAFF_SMS_ENABLED)?');">
+            @csrf
+            <button type="submit" class="btn btn-outline-secondary btn-sm">SMS</button>
+        </form>
+    </div>
+</div>
+
+<div class="card shadow-sm mb-3 border-left-warning" style="border-left-width: 4px;">
+    <div class="card-header bg-light font-weight-bold">Ghi chú nội bộ (chỉ nhân viên)</div>
+    <div class="card-body">
+        <form action="{{ route('staff.orders.internal-notes', $order) }}" method="POST">
+            @csrf
+            @method('PUT')
+            <textarea name="internal_notes" class="form-control" rows="3" placeholder="VD: đã gọi KH, chờ hoàn tiền...">{{ old('internal_notes', $order->internal_notes) }}</textarea>
+            @error('internal_notes')<div class="text-danger small mt-1">{{ $message }}</div>@enderror
+            <button type="submit" class="btn btn-primary btn-sm mt-2">Lưu ghi chú</button>
+        </form>
     </div>
 </div>
 
@@ -77,7 +100,7 @@
                 @if((int) ($order->shipping_fee ?? 0) > 0)
                 <div class="admin-order-summary__row">
                     <span class="admin-order-summary__label">
-                        Phí ship
+                        Phí vận chuyển
                         @if($order->shipping_distance_km !== null)
                             <span class="text-muted font-weight-normal">({{ number_format($order->shipping_distance_km, 1, ',', '.') }} km)</span>
                         @endif
@@ -98,6 +121,24 @@
                     <span class="admin-order-summary__label">Tổng thanh toán</span>
                     <span class="admin-order-summary__value text-danger">{{ number_format($order->total_amount, 0, ',', '.') }}₫</span>
                 </div>
+            </div>
+        </div>
+
+        <div class="card shadow-sm mb-3">
+            <div class="card-header bg-light font-weight-bold">Nhật ký thao tác (đơn này)</div>
+            <div class="card-body py-2">
+                @forelse($activities as $act)
+                    <div class="small border-bottom py-2 mb-0">
+                        <span class="text-muted">{{ $act->created_at->format('d/m/Y H:i') }}</span>
+                        — <strong>{{ $act->user?->name ?? '—' }}</strong>:
+                        <code>{{ $act->action }}</code>
+                        @if(!empty($act->properties))
+                            <span class="text-muted">{{ json_encode($act->properties, JSON_UNESCAPED_UNICODE) }}</span>
+                        @endif
+                    </div>
+                @empty
+                    <p class="text-muted small mb-0">Chưa có bản ghi.</p>
+                @endforelse
             </div>
         </div>
     </div>
