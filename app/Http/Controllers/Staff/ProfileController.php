@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Http\Controllers\User;
+namespace App\Http\Controllers\Staff;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
@@ -14,13 +14,13 @@ use Illuminate\Validation\Rules\Password;
 
 class ProfileController extends Controller
 {
-    private const OTP_VERIFIED_UNTIL_SESSION_KEY = 'user.profile.password_otp_verified_until';
+    private const OTP_VERIFIED_UNTIL_SESSION_KEY = 'staff.profile.password_otp_verified_until';
 
-    private const DELETE_CONFIRMED_AT_SESSION_KEY = 'user.profile.delete.confirmed_at';
+    private const DELETE_CONFIRMED_AT_SESSION_KEY = 'staff.profile.delete.confirmed_at';
 
-    private const DELETE_CONFIRMED_USER_ID_SESSION_KEY = 'user.profile.delete.confirmed_user_id';
+    private const DELETE_CONFIRMED_USER_ID_SESSION_KEY = 'staff.profile.delete.confirmed_user_id';
 
-    public function profile()
+    public function edit()
     {
         /** @var User|null $user */
         $user = Auth::user();
@@ -28,40 +28,40 @@ class ProfileController extends Controller
             abort(403);
         }
 
-        return view('user.profile.edit', compact('user'));
+        return view('staff.profile.edit', compact('user'));
     }
 
-    public function profileUpdate(Request $request)
+    public function update(Request $request)
     {
         /** @var User|null $user */
         $user = Auth::user();
         if (! $user) {
             abort(403);
         }
+
         $request->validate([
             'name' => 'required|string|max:255',
-            'birthday' => 'nullable|date|before_or_equal:today',
             'avatar' => 'nullable|image|mimes:jpeg,png,jpg,gif,webp|max:2048',
         ], [
             'name.required' => 'Vui lòng nhập tên.',
-            'birthday.before_or_equal' => 'Ngày sinh không được là ngày trong tương lai.',
             'avatar.image' => 'File phải là hình ảnh.',
             'avatar.max' => 'Kích thước ảnh không được quá 2MB.',
         ]);
 
         $data = [
             'name' => $request->input('name'),
-            'birthday' => $request->filled('birthday') ? $request->input('birthday') : null,
         ];
+
         if ($request->hasFile('avatar')) {
             if ($user->avatar && Storage::disk('public')->exists($user->avatar)) {
                 Storage::disk('public')->delete($user->avatar);
             }
             $data['avatar'] = $request->file('avatar')->store('avatars', 'public');
         }
+
         $user->update($data);
 
-        return redirect()->route('profile')->with('success', 'Đã cập nhật tài khoản thành công.');
+        return redirect()->route('staff.profile.edit')->with('success', 'Đã cập nhật thông tin tài khoản thành công.');
     }
 
     public function startPasswordOtp(Request $request, ProfilePasswordOtpService $otpService)
@@ -75,12 +75,11 @@ class ProfileController extends Controller
         $otpService->send($user);
         $request->session()->forget(self::OTP_VERIFIED_UNTIL_SESSION_KEY);
 
-        return redirect()
-            ->route('profile.password.otp.notice')
+        return redirect()->route('staff.profile.password.otp.notice')
             ->with('success', 'Đã gửi mã OTP đến email của bạn.');
     }
 
-    public function showPasswordOtpForm(Request $request)
+    public function showPasswordOtpForm()
     {
         /** @var User|null $user */
         $user = Auth::user();
@@ -88,7 +87,7 @@ class ProfileController extends Controller
             abort(403);
         }
 
-        return view('user.profile.password-otp', compact('user'));
+        return view('staff.profile.password-otp', compact('user'));
     }
 
     public function verifyPasswordOtp(Request $request, ProfilePasswordOtpService $otpService)
@@ -114,11 +113,11 @@ class ProfileController extends Controller
         $otpService->clear($user);
         $request->session()->put(self::OTP_VERIFIED_UNTIL_SESSION_KEY, now()->addMinutes(15)->toDateTimeString());
 
-        return redirect()->route('profile.password.form')
+        return redirect()->route('staff.profile.password.form')
             ->with('success', 'Xác thực OTP thành công. Bạn có thể đổi mật khẩu.');
     }
 
-    public function resendPasswordOtp(Request $request, ProfilePasswordOtpService $otpService)
+    public function resendPasswordOtp(ProfilePasswordOtpService $otpService)
     {
         /** @var User|null $user */
         $user = Auth::user();
@@ -133,18 +132,12 @@ class ProfileController extends Controller
 
     public function showPasswordForm(Request $request)
     {
-        /** @var User|null $user */
-        $user = Auth::user();
-        if (! $user) {
-            abort(403);
-        }
-
         if (! $this->passwordOtpPassed($request)) {
-            return redirect()->route('profile.password.otp.notice')
+            return redirect()->route('staff.profile.password.otp.notice')
                 ->with('error', 'Vui lòng xác thực OTP trước khi đổi mật khẩu.');
         }
 
-        return view('user.profile.change-password');
+        return view('staff.profile.change-password');
     }
 
     public function updatePassword(Request $request, ProfilePasswordOtpService $otpService)
@@ -156,7 +149,7 @@ class ProfileController extends Controller
         }
 
         if (! $this->passwordOtpPassed($request)) {
-            return redirect()->route('profile.password.otp.notice')
+            return redirect()->route('staff.profile.password.otp.notice')
                 ->with('error', 'Phiên xác thực OTP đã hết hạn, vui lòng xác thực lại.');
         }
 
@@ -178,7 +171,7 @@ class ProfileController extends Controller
         $otpService->clear($user);
         $request->session()->forget(self::OTP_VERIFIED_UNTIL_SESSION_KEY);
 
-        return redirect()->route('profile')->with('success', 'Đổi mật khẩu thành công.');
+        return redirect()->route('staff.profile.edit')->with('success', 'Đổi mật khẩu thành công.');
     }
 
     public function showDeleteConfirm()
@@ -191,7 +184,7 @@ class ProfileController extends Controller
 
         $confirmText = $user->email;
 
-        return view('user.profile.delete-confirm', compact('user', 'confirmText'));
+        return view('staff.profile.delete-confirm', compact('user', 'confirmText'));
     }
 
     public function startDeleteOtp(Request $request, AccountDeletionOtpService $otpService)
@@ -219,7 +212,7 @@ class ProfileController extends Controller
         $request->session()->put(self::DELETE_CONFIRMED_AT_SESSION_KEY, now()->toDateTimeString());
         $request->session()->put(self::DELETE_CONFIRMED_USER_ID_SESSION_KEY, $user->id);
 
-        return redirect()->route('profile.delete.otp.notice')
+        return redirect()->route('staff.profile.delete.otp.notice')
             ->with('success', 'Đã gửi OTP xác nhận xóa tài khoản tới email của bạn.');
     }
 
@@ -232,11 +225,11 @@ class ProfileController extends Controller
         }
 
         if (! $this->deleteFlowAllowed($request, $user)) {
-            return redirect()->route('profile.delete.confirm')
+            return redirect()->route('staff.profile.delete.confirm')
                 ->with('error', 'Vui lòng xác nhận cảnh báo trước khi nhập OTP.');
         }
 
-        return view('user.profile.delete-otp', compact('user'));
+        return view('staff.profile.delete-otp', compact('user'));
     }
 
     public function verifyDeleteOtp(Request $request, AccountDeletionOtpService $otpService)
@@ -248,7 +241,7 @@ class ProfileController extends Controller
         }
 
         if (! $this->deleteFlowAllowed($request, $user)) {
-            return redirect()->route('profile.delete.confirm')
+            return redirect()->route('staff.profile.delete.confirm')
                 ->with('error', 'Phiên xác nhận xóa tài khoản đã hết hạn.');
         }
 
@@ -280,7 +273,7 @@ class ProfileController extends Controller
         $request->session()->invalidate();
         $request->session()->regenerateToken();
 
-        return redirect()->route('register')
+        return redirect()->route('staff.login')
             ->with('success', 'Tài khoản đã được xóa thành công.');
     }
 
@@ -293,7 +286,7 @@ class ProfileController extends Controller
         }
 
         if (! $this->deleteFlowAllowed($request, $user)) {
-            return redirect()->route('profile.delete.confirm')
+            return redirect()->route('staff.profile.delete.confirm')
                 ->with('error', 'Vui lòng xác nhận lại yêu cầu xóa tài khoản.');
         }
 

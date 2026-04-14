@@ -43,24 +43,22 @@
             </div>
             <div class="form-group">
                 <label for="email"><strong>Email:</strong></label>
-                <input type="email" name="email" id="email" class="form-control" placeholder="Nhập email" value="{{ old('email', $user->email) }}" required>
-                @error('email')<div class="text-danger small mt-1">{{ $message }}</div>@enderror
-            </div>
-            <div class="form-group">
-                <label for="password"><strong>Mật khẩu mới:</strong></label>
-                <input type="password" name="password" id="password" class="form-control" placeholder="Để trống nếu không đổi">
-                <small class="form-text text-muted">Chỉ nhập khi muốn thay đổi mật khẩu.</small>
-                @error('password')<div class="text-danger small mt-1">{{ $message }}</div>@enderror
-            </div>
-            <div class="form-group">
-                <label for="password_confirmation"><strong>Xác nhận mật khẩu mới:</strong></label>
-                <input type="password" name="password_confirmation" id="password_confirmation" class="form-control" placeholder="Nhập lại mật khẩu mới">
+                <input type="email" id="email" class="form-control" value="{{ $user->email }}" readonly>
+                <small class="form-text text-muted">Email không thể thay đổi từ trang hồ sơ.</small>
             </div>
             <hr>
             <div class="d-flex justify-content-end">
-                <button type="submit" class="btn btn-danger">Cập nhật</button>
+                <button type="submit" class="btn btn-danger rounded-pill px-4">Cập nhật</button>
             </div>
         </form>
+        <hr>
+        <div class="d-flex flex-wrap align-items-center" style="gap: 0.6rem;">
+            <form action="{{ route('admin.profile.password.otp.start') }}" method="POST" class="mb-0">
+                @csrf
+                <button type="submit" class="btn btn-outline-danger rounded-pill px-4">Đổi mật khẩu qua OTP</button>
+            </form>
+            <a href="{{ route('admin.profile.delete.confirm') }}" class="btn btn-danger rounded-pill px-4">Xóa tài khoản</a>
+        </div>
     </div>
 </div>
 

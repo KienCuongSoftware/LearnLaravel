@@ -1,16 +1,16 @@
-@extends('layouts.user')
+@extends('layouts.staff')
 
-@section('title', 'Quản lý tài khoản')
+@section('title', 'Thông tin tài khoản')
 
 @section('content')
 <div class="page-header">
-    <h2>Quản lý tài khoản</h2>
-    <a class="btn btn-primary" href="{{ url('/') }}">Quay lại</a>
+    <h2>Thông tin tài khoản</h2>
+    <a class="btn btn-outline-secondary" href="{{ route('staff.dashboard') }}">Quay lại</a>
 </div>
 
-<div class="card mx-auto" style="max-width: 860px;">
+<div class="card shadow-sm">
     <div class="card-body">
-        <form action="{{ route('profile.update') }}" method="POST" enctype="multipart/form-data">
+        <form action="{{ route('staff.profile.update') }}" method="POST" enctype="multipart/form-data">
             @csrf
             @method('PUT')
             <div class="form-group">
@@ -18,17 +18,17 @@
                 <div class="d-flex flex-wrap align-items-start mb-2" style="gap: 1rem;">
                     @if($user->avatar)
                         <div>
-                            <img src="/images/avatars/{{ basename($user->avatar) }}" alt="{{ $user->name }}" class="rounded-circle img-thumbnail" style="width: 200px; height: 200px; object-fit: cover;">
+                            <img src="/images/avatars/{{ basename($user->avatar) }}" alt="{{ $user->name }}" class="rounded-circle img-thumbnail" style="width: 120px; height: 120px; object-fit: cover;">
                             <span class="text-muted small d-block">Ảnh hiện tại</span>
                         </div>
                     @else
                         <div>
-                            <x-user-avatar :user="$user" :size="200" class="rounded-circle img-thumbnail" />
+                            <x-user-avatar :user="$user" :size="120" class="rounded-circle img-thumbnail" />
                             <span class="text-muted small d-block">Ảnh hiện tại (chữ cái)</span>
                         </div>
                     @endif
                     <div id="preview-avatar" class="image-preview-wrap" style="display: none;">
-                        <img src="" alt="Preview" class="img-thumbnail rounded-circle" style="width: 200px; height: 200px; object-fit: cover;">
+                        <img src="" alt="Preview" class="img-thumbnail rounded-circle" style="width: 120px; height: 120px; object-fit: cover;">
                         <span class="text-muted small d-block">Ảnh mới</span>
                     </div>
                 </div>
@@ -46,25 +46,38 @@
                 <input type="email" id="email" class="form-control" value="{{ $user->email }}" readonly>
                 <small class="form-text text-muted">Email không thể thay đổi từ trang hồ sơ.</small>
             </div>
-            <div class="form-group">
-                <label for="birthday"><strong>Ngày sinh:</strong></label>
-                <input type="date" name="birthday" id="birthday" class="form-control" style="max-width: 320px;" value="{{ old('birthday', $user->birthday?->format('Y-m-d')) }}" max="{{ now()->format('Y-m-d') }}">
-                <small class="form-text text-muted">Tuỳ chọn. Cần thiết nếu bạn dùng ưu đãi sinh nhật.</small>
-                @error('birthday')<div class="text-danger small mt-1">{{ $message }}</div>@enderror
-            </div>
             <hr>
             <div class="d-flex justify-content-end">
-                <button type="submit" class="btn btn-primary rounded-pill px-4">Cập nhật</button>
+                <button type="submit" class="btn btn-danger rounded-pill px-4">Cập nhật</button>
             </div>
         </form>
         <hr>
         <div class="d-flex flex-wrap align-items-center" style="gap: 0.6rem;">
-            <form action="{{ route('profile.password.otp.start') }}" method="POST" class="mb-0">
+            <form action="{{ route('staff.profile.password.otp.start') }}" method="POST" class="mb-0">
                 @csrf
                 <button type="submit" class="btn btn-outline-danger rounded-pill px-4">Đổi mật khẩu qua OTP</button>
             </form>
-            <a href="{{ route('profile.delete.confirm') }}" class="btn btn-danger rounded-pill px-4">Xóa tài khoản</a>
+            <a href="{{ route('staff.profile.delete.confirm') }}" class="btn btn-danger rounded-pill px-4">Xóa tài khoản</a>
         </div>
     </div>
 </div>
 @endsection
+
+@push('scripts')
+<script>
+document.getElementById('avatar').addEventListener('change', function(e) {
+    var file = e.target.files[0];
+    var wrap = document.getElementById('preview-avatar');
+    if (!file || !file.type.match('image.*')) {
+        wrap.style.display = 'none';
+        return;
+    }
+    var reader = new FileReader();
+    reader.onload = function(e) {
+        wrap.querySelector('img').src = e.target.result;
+        wrap.style.display = 'block';
+    };
+    reader.readAsDataURL(file);
+});
+</script>
+@endpush
