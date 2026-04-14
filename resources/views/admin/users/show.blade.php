@@ -38,7 +38,18 @@
             <dt class="col-sm-3">Quản trị viên:</dt>
             <dd class="col-sm-9">{{ $user->is_admin ? 'Có' : 'Không' }}</dd>
             <dt class="col-sm-3">Nhân viên:</dt>
-            <dd class="col-sm-9">{{ ($user->is_staff ?? false) ? 'Có — đăng nhập /staff/login' : 'Không' }}</dd>
+            <dd class="col-sm-9">
+                @if($user->is_staff ?? false)
+                    Có — đăng nhập <code>/staff/login</code>
+                    <ul class="small mb-0 mt-2">
+                        <li>Đơn hàng: {{ ($user->staff_can_orders ?? true) ? 'Có' : 'Không' }}</li>
+                        <li>Duyệt đánh giá: {{ ($user->staff_can_reviews ?? true) ? 'Có' : 'Không' }}</li>
+                        <li>Kho: {{ ($user->staff_can_inventory ?? true) ? 'Có' : 'Không' }}</li>
+                    </ul>
+                @else
+                    Không
+                @endif
+            </dd>
             <dt class="col-sm-3">Trạng thái tài khoản:</dt>
             <dd class="col-sm-9">
                 @if($user->is_blocked ?? false)

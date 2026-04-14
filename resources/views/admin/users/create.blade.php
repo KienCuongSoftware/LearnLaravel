@@ -62,6 +62,24 @@
                 </div>
                 <small class="form-text text-muted">Đăng nhập tại <code>/staff/login</code>.</small>
             </div>
+            <div id="staff-modules-wrap" class="form-group pl-3 border-left border-secondary" style="display: none;">
+                <p class="small font-weight-bold mb-2">Quyền module nhân viên</p>
+                <div class="custom-control custom-checkbox mb-1">
+                    <input type="hidden" name="staff_can_orders" value="0">
+                    <input type="checkbox" class="custom-control-input" name="staff_can_orders" id="staff_can_orders" value="1" {{ old('staff_can_orders', true) ? 'checked' : '' }}>
+                    <label class="custom-control-label" for="staff_can_orders">Đơn hàng</label>
+                </div>
+                <div class="custom-control custom-checkbox mb-1">
+                    <input type="hidden" name="staff_can_reviews" value="0">
+                    <input type="checkbox" class="custom-control-input" name="staff_can_reviews" id="staff_can_reviews" value="1" {{ old('staff_can_reviews', true) ? 'checked' : '' }}>
+                    <label class="custom-control-label" for="staff_can_reviews">Duyệt đánh giá</label>
+                </div>
+                <div class="custom-control custom-checkbox mb-1">
+                    <input type="hidden" name="staff_can_inventory" value="0">
+                    <input type="checkbox" class="custom-control-input" name="staff_can_inventory" id="staff_can_inventory" value="1" {{ old('staff_can_inventory', true) ? 'checked' : '' }}>
+                    <label class="custom-control-label" for="staff_can_inventory">Kho (nhật ký + nhập/xuất tay)</label>
+                </div>
+            </div>
             <div class="form-group">
                 <div class="custom-control custom-checkbox">
                     <input type="hidden" name="is_vip" value="0">
@@ -77,4 +95,14 @@
         </form>
     </div>
 </div>
+@push('scripts')
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    var cb = document.getElementById('is_staff');
+    var wrap = document.getElementById('staff-modules-wrap');
+    function sync() { if (cb && wrap) wrap.style.display = cb.checked ? 'block' : 'none'; }
+    if (cb) { cb.addEventListener('change', sync); sync(); }
+});
+</script>
+@endpush
 @endsection

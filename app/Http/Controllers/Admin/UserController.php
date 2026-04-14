@@ -45,6 +45,9 @@ class UserController extends Controller
             'birthday' => 'nullable|date',
             'is_admin' => 'nullable|boolean',
             'is_staff' => 'nullable|boolean',
+            'staff_can_orders' => 'nullable|boolean',
+            'staff_can_reviews' => 'nullable|boolean',
+            'staff_can_inventory' => 'nullable|boolean',
             'is_vip' => 'nullable|boolean',
             'avatar' => 'nullable|image|mimes:jpeg,png,jpg,gif,webp|max:2048',
         ], [
@@ -58,12 +61,16 @@ class UserController extends Controller
             'avatar.max' => 'Kích thước ảnh không được quá 2MB.',
         ]);
 
+        $isStaff = $request->boolean('is_staff');
         $data = [
             'name' => $request->input('name'),
             'email' => $request->input('email'),
             'password' => Hash::make($request->input('password')),
             'is_admin' => (bool) $request->boolean('is_admin'),
-            'is_staff' => (bool) $request->boolean('is_staff'),
+            'is_staff' => $isStaff,
+            'staff_can_orders' => $isStaff && $request->boolean('staff_can_orders'),
+            'staff_can_reviews' => $isStaff && $request->boolean('staff_can_reviews'),
+            'staff_can_inventory' => $isStaff && $request->boolean('staff_can_inventory'),
             'is_vip' => (bool) $request->boolean('is_vip'),
             'avatar_palette_index' => UserInitialsAvatarService::randomPaletteIndex(),
         ];
@@ -97,6 +104,9 @@ class UserController extends Controller
             'birthday' => 'nullable|date',
             'is_admin' => 'nullable|boolean',
             'is_staff' => 'nullable|boolean',
+            'staff_can_orders' => 'nullable|boolean',
+            'staff_can_reviews' => 'nullable|boolean',
+            'staff_can_inventory' => 'nullable|boolean',
             'is_vip' => 'nullable|boolean',
             'avatar' => 'nullable|image|mimes:jpeg,png,jpg,gif,webp|max:2048',
         ], [
@@ -109,12 +119,16 @@ class UserController extends Controller
             'avatar.max' => 'Kích thước ảnh không được quá 2MB.',
         ]);
 
+        $isStaff = $request->boolean('is_staff');
         $data = [
             'name' => $request->input('name'),
             'email' => $request->input('email'),
             'birthday' => $request->filled('birthday') ? $request->input('birthday') : null,
             'is_admin' => (bool) $request->boolean('is_admin'),
-            'is_staff' => (bool) $request->boolean('is_staff'),
+            'is_staff' => $isStaff,
+            'staff_can_orders' => $isStaff && $request->boolean('staff_can_orders'),
+            'staff_can_reviews' => $isStaff && $request->boolean('staff_can_reviews'),
+            'staff_can_inventory' => $isStaff && $request->boolean('staff_can_inventory'),
             'is_vip' => (bool) $request->boolean('is_vip'),
         ];
         if ($request->filled('password')) {
