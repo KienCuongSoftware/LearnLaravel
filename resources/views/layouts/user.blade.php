@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>@yield('title', 'NovaShop')</title>
 <link rel="icon" href="{{ url('/favicon.svg') }}" type="image/svg+xml">
     <link rel="icon" href="{{ url('/favicon.ico') }}" type="image/x-icon">
@@ -1138,6 +1139,124 @@
             padding: 0.5rem 0.85rem;
             font-size: 1rem;
         }
+        #user-livechat {
+            position: fixed;
+            right: 1rem;
+            bottom: 5.25rem;
+            z-index: 1060;
+        }
+        #user-chat-toggle {
+            min-width: 108px;
+            height: 54px;
+            border-radius: 999px;
+            font-size: 0.95rem;
+            font-weight: 600;
+            box-shadow: 0 10px 24px rgba(220, 53, 69, 0.28);
+            background: #dc3545;
+            border-color: #dc3545;
+            position: relative;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0 1.1rem;
+        }
+        #user-chat-toggle .chat-unread-badge {
+            position: absolute;
+            top: -6px;
+            right: -4px;
+            min-width: 20px;
+            height: 20px;
+            padding: 0 5px;
+            border-radius: 999px;
+            background: #ffffff;
+            border: 1px solid #dc3545;
+            color: #dc3545;
+            font-weight: 800;
+            font-size: 0.72rem;
+            line-height: 20px;
+            text-align: center;
+            display: none;
+            box-shadow: 0 4px 8px rgba(220, 53, 69, 0.2);
+        }
+        #user-chat-popup {
+            width: min(370px, calc(100vw - 1.5rem));
+            max-height: 70vh;
+            border-radius: 22px;
+            border: 1px solid #f4c7cd;
+            overflow: hidden;
+            display: none;
+            flex-direction: column;
+        }
+        #user-chat-popup .card-header {
+            background: #dc3545;
+            color: #fff;
+            font-weight: 600;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 0.5rem;
+            border-top-left-radius: 22px;
+            border-top-right-radius: 22px;
+        }
+        #user-chat-messages {
+            padding: 0.8rem;
+            background: #fff8f8;
+            overflow-y: auto;
+            min-height: 260px;
+            max-height: calc(70vh - 110px);
+        }
+        #user-chat-messages .msg-row {
+            margin-bottom: 0.5rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.2rem;
+        }
+        #user-chat-messages .msg-row > small {
+            color: #7a2b32 !important;
+            font-weight: 600;
+            line-height: 1.2;
+            padding: 0 0.38rem;
+            margin-bottom: 0.08rem;
+        }
+        #user-chat-messages .msg-bubble {
+            max-width: 85%;
+            padding: 0.55rem 0.8rem;
+            border-radius: 1rem;
+            font-size: 0.92rem;
+            line-height: 1.35;
+            word-break: break-word;
+        }
+        #user-chat-messages .msg-row.user-msg { align-items: flex-end; }
+        #user-chat-messages .msg-row.user-msg > small { margin-right: 0.1rem; }
+        #user-chat-messages .msg-row.user-msg .msg-bubble {
+            background: #dc3545;
+            color: #fff;
+            border-bottom-right-radius: 0.45rem;
+        }
+        #user-chat-messages .msg-row.admin-msg { align-items: flex-start; }
+        #user-chat-messages .msg-row.admin-msg > small { margin-left: 0.1rem; }
+        #user-chat-messages .msg-row.admin-msg .msg-bubble {
+            background: #ffffff;
+            color: #721c24;
+            border: 1px solid #f1ccd1;
+            border-bottom-left-radius: 0.45rem;
+        }
+        #user-chat-input {
+            border-radius: 999px 0 0 999px;
+            border-color: #f1ccd1;
+            height: 42px;
+        }
+        #user-chat-send-btn {
+            border-radius: 0 999px 999px 0;
+            background: #dc3545;
+            border-color: #dc3545;
+            font-weight: 600;
+            padding: 0 1rem;
+        }
+        #user-chat-send-btn:hover {
+            background: #c82333;
+            border-color: #bd2130;
+        }
     </style>
 </head>
 <body>
@@ -1288,6 +1407,32 @@
         </div>
     </main>
 
+    @auth
+    <div id="user-livechat">
+        <button id="user-chat-toggle" class="btn btn-danger" type="button" aria-label="Mở chat hỗ trợ">
+            Chat
+            <span id="user-chat-unread-badge" class="chat-unread-badge">0</span>
+        </button>
+        <div id="user-chat-popup" class="card shadow-lg mt-2">
+            <div class="card-header">
+                <span>Hỗ trợ khách hàng</span>
+                <button id="user-chat-close" class="btn btn-sm btn-outline-light rounded-pill px-3" type="button">Đóng</button>
+            </div>
+            <div id="user-chat-messages" class="card-body p-0">
+                <div class="text-center text-muted py-3"><small>Đang tải lịch sử...</small></div>
+            </div>
+            <div class="card-footer bg-white">
+                <div class="input-group">
+                    <input type="text" id="user-chat-input" class="form-control" placeholder="Nhập tin nhắn..." autocomplete="off">
+                    <div class="input-group-append">
+                        <button id="user-chat-send-btn" class="btn btn-danger" type="button">Gửi</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    @endauth
+
     <footer class="bg-novashop py-4 mt-4" id="site-footer">
         <div class="container">
             <div class="row">
@@ -1324,6 +1469,8 @@
     <script src="https://code.jquery.com/jquery-3.2.1.slim.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.11.0/umd/popper.min.js"></script>
     <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/js/bootstrap.min.js"></script>
+    <script src="https://js.pusher.com/8.2.0/pusher.min.js"></script>
+    <script src="https://unpkg.com/laravel-echo@1.16.1/dist/echo.iife.js"></script>
     <script src="{{ asset('js/image-preview.js') }}"></script>
     <script>
         $(function() {
@@ -1588,6 +1735,207 @@
             if (input && input.value.trim()) {
                 addToHistory(input.value.trim());
             }
+        })();
+        (function() {
+            var toggleBtn = document.getElementById('user-chat-toggle');
+            if (!toggleBtn) return;
+            var popup = document.getElementById('user-chat-popup');
+            var closeBtn = document.getElementById('user-chat-close');
+            var sendBtn = document.getElementById('user-chat-send-btn');
+            var input = document.getElementById('user-chat-input');
+            var messagesEl = document.getElementById('user-chat-messages');
+            var unreadBadge = document.getElementById('user-chat-unread-badge');
+            var authId = {{ (int) auth()->id() }};
+            var channel = null;
+            var seenMessageIds = new Set();
+            function isPopupOpen() {
+                return popup && popup.style.display === 'flex';
+            }
+
+            function escapeHtml(text) {
+                var div = document.createElement('div');
+                div.textContent = text || '';
+                return div.innerHTML;
+            }
+
+            function setUnreadBadge(count) {
+                if (!unreadBadge) return;
+                var total = Number(count || 0);
+                if (total <= 0) {
+                    unreadBadge.style.display = 'none';
+                    return;
+                }
+                unreadBadge.textContent = total > 99 ? '99+' : String(total);
+                unreadBadge.style.display = 'inline-block';
+            }
+
+            function loadUnreadCount() {
+                fetch("{{ route('user.chat.unread-count') }}", { headers: { 'Accept': 'application/json' } })
+                    .then(function(res) { return res.ok ? res.json() : { unread: 0 }; })
+                    .then(function(data) { setUnreadBadge(data.unread || 0); })
+                    .catch(function() {});
+            }
+
+            function renderMessages(messages) {
+                if (!messages || messages.length === 0) {
+                    messagesEl.innerHTML = "<div class='text-center text-muted py-3'><small>Bắt đầu cuộc trò chuyện với Admin</small></div>";
+                    return;
+                }
+                var html = '';
+                seenMessageIds = new Set();
+                messages.forEach(function(msg) {
+                    seenMessageIds.add(Number(msg.id));
+                    var isMe = Number(msg.sender_id) === authId;
+                    var sender = isMe ? 'Bạn' : 'Admin';
+                    var rowClass = isMe ? 'user-msg' : 'admin-msg';
+                    html += '<div class="msg-row ' + rowClass + '">';
+                    html += '<small class="text-muted">' + escapeHtml(sender) + '</small>';
+                    html += '<div class="msg-bubble">' + escapeHtml(msg.content || '') + '</div>';
+                    html += '</div>';
+                });
+                messagesEl.innerHTML = html;
+                messagesEl.scrollTop = messagesEl.scrollHeight;
+            }
+
+            function appendMessage(msg) {
+                var msgId = Number(msg.id);
+                if (msgId > 0 && seenMessageIds.has(msgId)) {
+                    return;
+                }
+                var isMe = Number(msg.sender_id) === authId;
+                if (!isMe && isPopupOpen()) {
+                    // If user is already reading chat, refresh to mark incoming message as read.
+                    loadMessages();
+                    return;
+                }
+                if (msgId > 0) {
+                    seenMessageIds.add(msgId);
+                }
+                if (messagesEl.querySelector('.text-center')) {
+                    messagesEl.innerHTML = '';
+                }
+                var sender = isMe ? 'Bạn' : 'Admin';
+                var rowClass = isMe ? 'user-msg' : 'admin-msg';
+                var wrapper = document.createElement('div');
+                wrapper.className = 'msg-row ' + rowClass;
+                wrapper.innerHTML = '<small class="text-muted">' + escapeHtml(sender) + '</small>'
+                    + '<div class="msg-bubble">' + escapeHtml(msg.content || '') + '</div>';
+                messagesEl.appendChild(wrapper);
+                messagesEl.scrollTop = messagesEl.scrollHeight;
+            }
+
+            function loadMessages() {
+                fetch("{{ route('user.chat.messages') }}", {
+                    headers: { 'Accept': 'application/json' }
+                })
+                    .then(function(res) { return res.ok ? res.json() : []; })
+                    .then(function(messages) {
+                        renderMessages(messages);
+                        loadUnreadCount();
+                    })
+                    .catch(function() {
+                        messagesEl.innerHTML = "<div class='text-center text-danger py-3'><small>Không tải được tin nhắn.</small></div>";
+                    });
+            }
+
+            function sendMessage() {
+                var message = (input.value || '').trim();
+                if (!message) return;
+                input.disabled = true;
+                sendBtn.disabled = true;
+                fetch("{{ route('user.chat.send') }}", {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify({ message: message })
+                })
+                    .then(function(res) { return res.json(); })
+                    .then(function(data) {
+                        if (data && data.error) {
+                            throw new Error(data.error);
+                        }
+                        input.value = '';
+                        input.disabled = false;
+                        sendBtn.disabled = false;
+                        input.focus();
+                        appendMessage(data);
+                    })
+                    .catch(function() {
+                        input.disabled = false;
+                        sendBtn.disabled = false;
+                    });
+            }
+
+            function initEcho() {
+                if (typeof window.Echo === 'undefined' || typeof window.Pusher === 'undefined') {
+                    return;
+                }
+                if (!window.chatEchoInstance) {
+                    var csrf = document.querySelector('meta[name="csrf-token"]');
+                    var broadcaster = @json(config('broadcasting.default'));
+                    if (broadcaster !== 'pusher' && broadcaster !== 'reverb') {
+                        return;
+                    }
+                    var opts;
+                    if (broadcaster === 'pusher') {
+                        opts = {
+                            broadcaster: 'pusher',
+                            key: @json(config('broadcasting.connections.pusher.key')),
+                            cluster: @json(config('broadcasting.connections.pusher.options.cluster')),
+                            wsHost: @json(config('broadcasting.connections.pusher.options.host')),
+                            wsPort: @json((int) config('broadcasting.connections.pusher.options.port', 80)),
+                            wssPort: @json((int) config('broadcasting.connections.pusher.options.port', 443)),
+                            forceTLS: @json((bool) config('broadcasting.connections.pusher.options.useTLS', true)),
+                            enabledTransports: ['ws', 'wss'],
+                            authEndpoint: '/broadcasting/auth',
+                            auth: { headers: { 'X-CSRF-TOKEN': csrf ? csrf.getAttribute('content') : '' } }
+                        };
+                    } else {
+                        opts = {
+                            broadcaster: 'reverb',
+                            key: @json(config('broadcasting.connections.reverb.key')),
+                            wsHost: @json(config('broadcasting.connections.reverb.options.host', '127.0.0.1')),
+                            wsPort: @json((int) config('broadcasting.connections.reverb.options.port', 8080)),
+                            wssPort: @json((int) config('broadcasting.connections.reverb.options.port', 8080)),
+                            forceTLS: @json(config('broadcasting.connections.reverb.options.scheme', 'http') === 'https'),
+                            enabledTransports: ['ws', 'wss'],
+                            authEndpoint: '/broadcasting/auth',
+                            auth: { headers: { 'X-CSRF-TOKEN': csrf ? csrf.getAttribute('content') : '' } }
+                        };
+                    }
+
+                    var EchoCtor = window.Echo;
+                    window.chatEchoInstance = new EchoCtor(opts);
+                }
+                channel = window.chatEchoInstance.private('chat.user.' + authId);
+                channel.listen('.message.sent', function(payload) {
+                    appendMessage(payload);
+                    loadUnreadCount();
+                });
+            }
+
+            toggleBtn.addEventListener('click', function() {
+                popup.style.display = 'flex';
+                toggleBtn.style.display = 'none';
+                loadMessages();
+            });
+            closeBtn.addEventListener('click', function() {
+                popup.style.display = 'none';
+                toggleBtn.style.display = 'inline-flex';
+            });
+            sendBtn.addEventListener('click', sendMessage);
+            input.addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    sendMessage();
+                }
+            });
+
+            initEcho();
+            loadUnreadCount();
         })();
     </script>
     @livewireScripts

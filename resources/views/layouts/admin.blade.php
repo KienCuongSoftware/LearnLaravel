@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>@yield('title', 'Trang quản trị') - NovaShop</title>
 <link rel="icon" href="{{ url('/favicon.svg') }}" type="image/svg+xml">
     <link rel="icon" href="{{ url('/favicon.ico') }}" type="image/x-icon">
@@ -149,6 +150,147 @@
             display: inline-block;
             text-align: center;
         }
+        #admin-livechat {
+            position: fixed;
+            right: 1rem;
+            bottom: 1rem;
+            z-index: 1060;
+        }
+        #admin-chat-toggle {
+            border-radius: 999px;
+            box-shadow: 0 8px 22px rgba(0, 0, 0, 0.25);
+            position: relative;
+            background: #dc3545;
+            border-color: #dc3545;
+            color: #fff;
+            font-weight: 600;
+            padding: 0.55rem 1rem;
+        }
+        #admin-chat-toggle .chat-unread-badge {
+            position: absolute;
+            top: -6px;
+            right: -6px;
+            min-width: 20px;
+            height: 20px;
+            padding: 0 5px;
+            border-radius: 999px;
+            background: #dc3545;
+            color: #fff;
+            font-size: 0.72rem;
+            font-weight: 700;
+            line-height: 20px;
+            text-align: center;
+            display: none;
+        }
+        #admin-chat-popup {
+            width: min(760px, calc(100vw - 2rem));
+            height: min(560px, calc(100vh - 2rem));
+            background: #fff;
+            border-radius: 22px;
+            border: 1px solid #f3ccd1;
+            display: none;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        #admin-chat-body {
+            display: flex;
+            flex: 1;
+            min-height: 0;
+        }
+        #admin-chat-users {
+            width: 230px;
+            border-right: 1px solid #f3d9dd;
+            overflow-y: auto;
+            background: #fff8f8;
+        }
+        #admin-chat-users .user-item {
+            padding: 0.7rem 0.85rem;
+            border-bottom: 1px solid #f5e1e4;
+            cursor: pointer;
+            font-size: 0.92rem;
+            border-radius: 12px;
+            margin: 0.3rem 0.35rem;
+        }
+        #admin-chat-users .user-item:hover {
+            background: #fff5f5;
+        }
+        #admin-chat-users .user-item.active {
+            background: #ffe8eb;
+            color: #b71c1c;
+            font-weight: 600;
+        }
+        #admin-chat-users .user-unread {
+            display: inline-block;
+            min-width: 18px;
+            height: 18px;
+            border-radius: 999px;
+            padding: 0 5px;
+            margin-left: 0.35rem;
+            background: #dc3545;
+            color: #fff;
+            font-size: 0.7rem;
+            line-height: 18px;
+            text-align: center;
+            font-weight: 700;
+        }
+        #admin-chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 0.8rem;
+            background: #fff8f8;
+        }
+        #admin-chat-messages .msg-row {
+            margin-bottom: 0.55rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.2rem;
+        }
+        #admin-chat-messages .msg-row > small {
+            color: #7a2b32 !important;
+            font-weight: 600;
+            line-height: 1.2;
+            padding: 0 0.38rem;
+            margin-bottom: 0.08rem;
+        }
+        #admin-chat-messages .msg-row.admin-msg { align-items: flex-end; }
+        #admin-chat-messages .msg-row.admin-msg > small { margin-right: 0.1rem; }
+        #admin-chat-messages .msg-row.user-msg { align-items: flex-start; }
+        #admin-chat-messages .msg-row.user-msg > small { margin-left: 0.1rem; }
+        #admin-chat-messages .msg-bubble {
+            max-width: 80%;
+            padding: 0.55rem 0.8rem;
+            border-radius: 1rem;
+            font-size: 0.92rem;
+            line-height: 1.35;
+            word-break: break-word;
+        }
+        #admin-chat-messages .admin-msg .msg-bubble {
+            background: #dc3545;
+            color: #fff;
+            border-bottom-right-radius: 0.45rem;
+        }
+        #admin-chat-messages .user-msg .msg-bubble {
+            background: #ffffff;
+            color: #721c24;
+            border: 1px solid #f1ccd1;
+            border-bottom-left-radius: 0.45rem;
+        }
+        #admin-chat-input {
+            border-radius: 999px 0 0 999px;
+            border-color: #f1ccd1;
+            height: 40px;
+        }
+        #admin-chat-send-btn {
+            border-radius: 0 999px 999px 0;
+            background: #dc3545;
+            border-color: #dc3545;
+            font-weight: 600;
+            padding: 0 1rem;
+        }
+        #admin-chat-send-btn:hover {
+            background: #c82333;
+            border-color: #bd2130;
+        }
     </style>
 </head>
 <body>
@@ -255,9 +397,40 @@
         </div>
     </div>
 
+    <div id="admin-livechat">
+        <button id="admin-chat-toggle" class="btn btn-danger rounded-pill" type="button">
+            Chat khách hàng
+            <span id="admin-chat-unread-badge" class="chat-unread-badge">0</span>
+        </button>
+        <div id="admin-chat-popup" class="card shadow-lg mt-2">
+            <div class="card-header bg-danger text-white d-flex justify-content-between align-items-center">
+                <strong>Hỗ trợ trực tuyến</strong>
+                <button id="admin-chat-close" class="btn btn-sm btn-outline-light rounded-pill px-3" type="button">Đóng</button>
+            </div>
+            <div id="admin-chat-body">
+                <div id="admin-chat-users">
+                    <div class="p-2 text-center text-muted"><small>Đang tải danh sách...</small></div>
+                </div>
+                <div id="admin-chat-messages">
+                    <div class="text-center mt-5 text-muted">Chọn một khách hàng để xem tin nhắn</div>
+                </div>
+            </div>
+            <div class="card-footer bg-white">
+                <div class="input-group">
+                    <input type="text" id="admin-chat-input" class="form-control form-control-sm" placeholder="Nhập câu trả lời..." autocomplete="off">
+                    <div class="input-group-append">
+                        <button id="admin-chat-send-btn" class="btn btn-danger btn-sm" type="button">Gửi</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script src="https://code.jquery.com/jquery-3.2.1.slim.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.11.0/umd/popper.min.js"></script>
     <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/js/bootstrap.min.js"></script>
+    <script src="https://js.pusher.com/8.2.0/pusher.min.js"></script>
+    <script src="https://unpkg.com/laravel-echo@1.16.1/dist/echo.iife.js"></script>
     <script src="{{ asset('js/image-preview.js') }}"></script>
     <script>
         $(function() { setTimeout(function() { $('.alert').alert('close'); }, 3000); });
@@ -299,6 +472,256 @@
                 });
                 return false;
             };
+        })();
+        (function() {
+            var toggle = document.getElementById('admin-chat-toggle');
+            if (!toggle) return;
+            var popup = document.getElementById('admin-chat-popup');
+            var closeBtn = document.getElementById('admin-chat-close');
+            var usersEl = document.getElementById('admin-chat-users');
+            var messagesEl = document.getElementById('admin-chat-messages');
+            var input = document.getElementById('admin-chat-input');
+            var sendBtn = document.getElementById('admin-chat-send-btn');
+            var unreadBadge = document.getElementById('admin-chat-unread-badge');
+            var currentUserId = null;
+            var usersCache = [];
+            var adminId = {{ (int) auth()->id() }};
+            var channel = null;
+            var seenMessageIds = new Set();
+            function isPopupOpen() {
+                return popup && popup.style.display === 'flex';
+            }
+
+            function escapeHtml(text) {
+                var div = document.createElement('div');
+                div.textContent = text || '';
+                return div.innerHTML;
+            }
+
+            function setUnreadBadge(count) {
+                if (!unreadBadge) return;
+                var total = Number(count || 0);
+                if (total <= 0) {
+                    unreadBadge.style.display = 'none';
+                    return;
+                }
+                unreadBadge.textContent = total > 99 ? '99+' : String(total);
+                unreadBadge.style.display = 'inline-block';
+            }
+
+            function renderUsers(users) {
+                usersCache = users || [];
+                if (!users || users.length === 0) {
+                    usersEl.innerHTML = '<div class="p-2 text-center text-muted"><small>Chưa có hội thoại</small></div>';
+                    return;
+                }
+                var html = '';
+                users.forEach(function(user) {
+                    var activeClass = Number(currentUserId) === Number(user.id) ? 'active' : '';
+                    var unreadCount = Number(user.unread_count || 0);
+                    var unreadHtml = unreadCount > 0 ? '<span class="user-unread">' + (unreadCount > 99 ? '99+' : unreadCount) + '</span>' : '';
+                    html += '<div class="user-item ' + activeClass + '" data-id="' + user.id + '">'
+                        + '<span>' + escapeHtml(user.name) + '</span>'
+                        + unreadHtml
+                        + '</div>';
+                });
+                usersEl.innerHTML = html;
+                Array.prototype.forEach.call(usersEl.querySelectorAll('.user-item'), function(item) {
+                    item.addEventListener('click', function() {
+                        currentUserId = Number(item.getAttribute('data-id'));
+                        renderUsers(users);
+                        loadMessages();
+                    });
+                });
+            }
+
+            function renderMessages(messages) {
+                if (!messages || messages.length === 0) {
+                    messagesEl.innerHTML = '<div class="text-center mt-5 text-muted">Chưa có tin nhắn</div>';
+                    return;
+                }
+                var html = '';
+                seenMessageIds = new Set();
+                messages.forEach(function(msg) {
+                    seenMessageIds.add(Number(msg.id));
+                    var isAdmin = Number(msg.sender_id) === adminId;
+                    html += '<div class="msg-row ' + (isAdmin ? 'admin-msg' : 'user-msg') + '">';
+                    html += '<small class="text-muted">' + (isAdmin ? 'Bạn' : (msg.sender ? escapeHtml(msg.sender.name) : 'Khách hàng')) + '</small>';
+                    html += '<div class="msg-bubble">' + escapeHtml(msg.content || '') + '</div>';
+                    html += '</div>';
+                });
+                messagesEl.innerHTML = html;
+                messagesEl.scrollTop = messagesEl.scrollHeight;
+            }
+
+            function appendMessage(msg) {
+                if (!msg) return;
+                var msgId = Number(msg.id);
+                if (msgId > 0 && seenMessageIds.has(msgId)) {
+                    return;
+                }
+                var isAdmin = Number(msg.sender_id) === adminId;
+                var otherUserId = Number(msg.sender_id) === adminId ? Number(msg.receiver_id) : Number(msg.sender_id);
+                if (!currentUserId) {
+                    currentUserId = otherUserId;
+                }
+                if (otherUserId !== Number(currentUserId)) {
+                    loadUsers();
+                    loadUnreadCount();
+                    return;
+                }
+                if (!isAdmin && isPopupOpen()) {
+                    // Mark as read immediately when admin is viewing this conversation.
+                    loadMessages();
+                    return;
+                }
+                if (msgId > 0) {
+                    seenMessageIds.add(msgId);
+                }
+                if (messagesEl.querySelector('.text-center')) {
+                    messagesEl.innerHTML = '';
+                }
+                var wrapper = document.createElement('div');
+                wrapper.className = 'msg-row ' + (isAdmin ? 'admin-msg' : 'user-msg');
+                wrapper.innerHTML = '<small class="text-muted">'
+                    + (isAdmin ? 'Bạn' : (msg.sender ? escapeHtml(msg.sender.name) : 'Khách hàng'))
+                    + '</small><div class="msg-bubble">' + escapeHtml(msg.content || '') + '</div>';
+                messagesEl.appendChild(wrapper);
+                messagesEl.scrollTop = messagesEl.scrollHeight;
+                loadUsers();
+                loadUnreadCount();
+            }
+
+            function loadUsers() {
+                fetch("{{ route('admin.chat.users') }}", { headers: { 'Accept': 'application/json' } })
+                    .then(function(res) { return res.ok ? res.json() : []; })
+                    .then(function(users) {
+                        renderUsers(users);
+                        if (!currentUserId && users.length) {
+                            currentUserId = Number(users[0].id);
+                            renderUsers(users);
+                            loadMessages();
+                        }
+                    });
+            }
+
+            function loadUnreadCount() {
+                fetch("{{ route('admin.chat.unread-count') }}", { headers: { 'Accept': 'application/json' } })
+                    .then(function(res) { return res.ok ? res.json() : { unread: 0 }; })
+                    .then(function(data) { setUnreadBadge(data.unread || 0); });
+            }
+
+            function loadMessages() {
+                if (!currentUserId) return;
+                fetch('/admin/chat/messages/' + currentUserId, { headers: { 'Accept': 'application/json' } })
+                    .then(function(res) { return res.ok ? res.json() : []; })
+                    .then(function(messages) {
+                        renderMessages(messages);
+                        loadUsers();
+                        loadUnreadCount();
+                    });
+            }
+
+            function sendMessage() {
+                var message = (input.value || '').trim();
+                if (!message || !currentUserId) return;
+                input.disabled = true;
+                sendBtn.disabled = true;
+                fetch("{{ route('admin.chat.send') }}", {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                    },
+                    body: JSON.stringify({
+                        message: message,
+                        user_id: currentUserId
+                    })
+                })
+                    .then(function(res) { return res.json(); })
+                    .then(function(data) {
+                        if (data && data.error) throw new Error(data.error);
+                        input.value = '';
+                        input.disabled = false;
+                        sendBtn.disabled = false;
+                        input.focus();
+                        appendMessage(data);
+                    })
+                    .catch(function() {
+                        input.disabled = false;
+                        sendBtn.disabled = false;
+                    });
+            }
+
+            function initEcho() {
+                if (typeof window.Echo === 'undefined' || typeof window.Pusher === 'undefined') {
+                    return;
+                }
+                if (!window.chatEchoInstance) {
+                    var csrf = document.querySelector('meta[name="csrf-token"]');
+                    var broadcaster = @json(config('broadcasting.default'));
+                    if (broadcaster !== 'pusher' && broadcaster !== 'reverb') {
+                        return;
+                    }
+                    var opts;
+                    if (broadcaster === 'pusher') {
+                        opts = {
+                            broadcaster: 'pusher',
+                            key: @json(config('broadcasting.connections.pusher.key')),
+                            cluster: @json(config('broadcasting.connections.pusher.options.cluster')),
+                            wsHost: @json(config('broadcasting.connections.pusher.options.host')),
+                            wsPort: @json((int) config('broadcasting.connections.pusher.options.port', 80)),
+                            wssPort: @json((int) config('broadcasting.connections.pusher.options.port', 443)),
+                            forceTLS: @json((bool) config('broadcasting.connections.pusher.options.useTLS', true)),
+                            enabledTransports: ['ws', 'wss'],
+                            authEndpoint: '/broadcasting/auth',
+                            auth: { headers: { 'X-CSRF-TOKEN': csrf ? csrf.getAttribute('content') : '' } }
+                        };
+                    } else {
+                        opts = {
+                            broadcaster: 'reverb',
+                            key: @json(config('broadcasting.connections.reverb.key')),
+                            wsHost: @json(config('broadcasting.connections.reverb.options.host', '127.0.0.1')),
+                            wsPort: @json((int) config('broadcasting.connections.reverb.options.port', 8080)),
+                            wssPort: @json((int) config('broadcasting.connections.reverb.options.port', 8080)),
+                            forceTLS: @json(config('broadcasting.connections.reverb.options.scheme', 'http') === 'https'),
+                            enabledTransports: ['ws', 'wss'],
+                            authEndpoint: '/broadcasting/auth',
+                            auth: { headers: { 'X-CSRF-TOKEN': csrf ? csrf.getAttribute('content') : '' } }
+                        };
+                    }
+
+                    var EchoCtor = window.Echo;
+                    window.chatEchoInstance = new EchoCtor(opts);
+                }
+                channel = window.chatEchoInstance.private('chat.user.' + adminId);
+                channel.listen('.message.sent', function(payload) {
+                    appendMessage(payload);
+                });
+            }
+
+            toggle.addEventListener('click', function() {
+                popup.style.display = 'flex';
+                loadUsers();
+                if (currentUserId) {
+                    loadMessages();
+                }
+            });
+            closeBtn.addEventListener('click', function() {
+                popup.style.display = 'none';
+            });
+            sendBtn.addEventListener('click', sendMessage);
+            input.addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    sendMessage();
+                }
+            });
+
+            initEcho();
+            loadUsers();
+            loadUnreadCount();
         })();
     </script>
     @stack('scripts')
