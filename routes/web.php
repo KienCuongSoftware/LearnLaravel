@@ -173,6 +173,9 @@ Route::namespace('App\Http\Controllers\User')->middleware(['auth', 'email.verifi
     Route::post('/profile/password/otp/resend', 'ProfileController@resendPasswordOtp')->name('profile.password.otp.resend');
     Route::get('/profile/password/change', 'ProfileController@showPasswordForm')->name('profile.password.form');
     Route::put('/profile/password/change', 'ProfileController@updatePassword')->name('profile.password.update');
+    Route::post('/chat/send', 'ChatController@send')->name('user.chat.send');
+    Route::get('/chat/messages', 'ChatController@getMessages')->name('user.chat.messages');
+    Route::get('/chat/unread-count', 'ChatController@unreadCount')->name('user.chat.unread-count');
     Route::get('/addresses', 'AddressController@index')->name('addresses.index');
     Route::get('/addresses/create', 'AddressController@create')->name('addresses.create');
     Route::post('/addresses', 'AddressController@store')->name('addresses.store');
@@ -283,6 +286,10 @@ Route::middleware(['auth', 'email.verified.otp', 'admin'])->prefix('admin')->nam
         Route::post('/profile/password/otp/resend', 'ProfileController@resendPasswordOtp')->name('profile.password.otp.resend');
         Route::get('/profile/password/change', 'ProfileController@showPasswordForm')->name('profile.password.form');
         Route::put('/profile/password/change', 'ProfileController@updatePassword')->name('profile.password.update');
+        Route::get('/chat/users', 'ChatController@getUsers')->name('chat.users');
+        Route::get('/chat/messages/{userId}', 'ChatController@getMessages')->name('chat.messages');
+        Route::post('/chat/send', 'ChatController@send')->name('chat.send');
+        Route::get('/chat/unread-count', 'ChatController@unreadCount')->name('chat.unread-count');
     });
 
 });
