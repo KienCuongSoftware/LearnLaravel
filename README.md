@@ -1,199 +1,232 @@
 # NovaShop
 
-A **Laravel 12** e-commerce demo: hierarchical categories, products with variants & attributes, brands, flash sales, **review moderation** (pending reviews handled in the **staff** panel; only approved reviews on the storefront), address book (Leaflet / OpenStreetMap), **distance-based shipping** + **delivery date range** hints (`config/delivery.php`), **cart coupons** (including **VIP**, **first-time buyer**, and **birthday window** rules), **wishlist** & **compare** (up to 4 items; optional share links), **“frequently bought together”** from order history, **back-in-stock email** + in-app **stock alert inbox**, **Elasticsearch-backed search** (optional), **DB search synonyms** (admin), **AI product assistant** (`/ai-chat`, OpenAI), cart & checkout, orders (**COD / PayPal**), **customer cancel / return requests**, **3-step registration onboarding** (email/password -> name -> avatar), **OTP-secured profile actions** (change password, account delete, account restore), **soft-delete accounts with restore window**, an **admin** dashboard (KPIs, revenue chart, top SKUs, cancel rate; links to staff for order operations), a **staff** area for operations, and **real-time livechat** (Laravel Echo + Pusher/Reverb) with unread badges.
+Technical-focused Laravel 12 e-commerce system used to demonstrate backend design choices, trade-offs, and implementation depth.
 
 **Repository:** [https://github.com/KienCuongSoftware/NovaShop](https://github.com/KienCuongSoftware/NovaShop)
 
+## Architecture
+
+- Monolithic Laravel application, modularized by domain (`User`, `Admin`, `Staff`)
+- Layered flow: `Controller -> Service -> Model`
+- Event-driven pieces for side effects (`OrderObserver`, `MessageSent`)
+- Realtime communication via broadcasting channels (`chat.user.{id}`)
+- Core services:
+  - `OrderPlacementService`
+  - `CouponService`
+  - `ShippingFeeService`
+  - `ProductSearchService`
+
+```mermaid
+flowchart LR
+    Client[Frontend / Blade Client] --> Controller[Controller Layer]
+    Controller --> Service[Service Layer]
+    Service --> Model[Eloquent Model Layer]
+    Model --> MySQL[(MySQL)]
+    Service --> Cache[(Cache)]
+    Service --> Events[Domain Events]
+    Events --> Queue[Queue / Mail / Broadcast]
+```
+
+## Key Technical Decisions
+
+- Search strategy: database search as baseline + optional Elasticsearch
+  - simpler local setup
+  - scalable search path without changing business flow
+- Queued back-in-stock notifications
+  - avoids blocking request lifecycle
+  - better reliability for high-volume mail
+- Shipping by Haversine distance (internal coordinates)
+  - no external API dependency
+  - deterministic fee calculation
+- OTP-gated sensitive flows (password change, account delete, account restore)
+  - reduces account takeover risk
+  - keeps critical actions auditable
+- Soft delete for `users` with controlled restore flow
+  - preserves data integrity across orders/payments/reviews
+
+## Authentication and Account Security Flow
+
+1. Register with email/password
+2. Verify email via OTP
+3. Complete onboarding (name -> avatar)
+4. Sensitive actions require extra OTP:
+   - password change
+   - account deletion
+   - account restoration
+5. Deleted account login path:
+   - explicit restore prompt
+   - restore OTP verification
+
+## Database Design
+
+### Core Entities
+
+- `users` (role flags, OTP fields, soft delete `deleted_at`)
+- `orders`, `order_items`, `payments`
+- `products`, `product_variants`, `inventory_logs`
+- `coupons`
+- `messages` (livechat persistence + unread state)
+
+### Key Relationships
+
+- One `User` -> many `Orders`
+- One `Order` -> many `OrderItems`
+- One `Product` -> many `ProductVariants`
+- One `User` <-> many `Message` as sender/receiver
+
+```mermaid
+erDiagram
+    USERS ||--o{ ORDERS : places
+    ORDERS ||--|{ ORDER_ITEMS : contains
+    PRODUCTS ||--o{ PRODUCT_VARIANTS : has
+    PRODUCTS ||--o{ ORDER_ITEMS : sold_in
+    USERS ||--o{ MESSAGES : sends
+    USERS ||--o{ MESSAGES : receives
+```
+
+## Request Lifecycle (Example: Place Order)
+
+1. Client submits checkout request
+2. Controller validates input and forwards to `OrderPlacementService`
+3. Service:
+   - validates cart state and coupon
+   - checks stock availability
+   - calculates pricing and shipping
+4. Database transaction:
+   - creates `order` + `order_items`
+   - updates inventory
+5. `OrderObserver` triggers:
+   - email notification
+   - inventory logs
+6. Response returned to client
+
+## Core Backend Challenges
+
+### 1) Coupon Validation Engine
+
+- Handles multiple constraints together:
+  - VIP / first-order / birthday windows
+  - category scope and descendant matching
+  - minimum order and usage limits
+- Enforced twice:
+  - cart pricing stage
+  - final order placement stage
+
+### 2) Inventory Consistency
+
+- Stock changes on checkout and cancellation/return scenarios
+- Inventory movement logging for traceability
+- Staff-side manual adjustments integrated into logs
+
+### 3) Realtime Chat System
+
+- WebSocket-based chat (Laravel Echo + Reverb/Pusher)
+- Private per-user channels for message isolation
+- Unread counter synchronization for both user and admin views
+
+## Concurrency Handling
+
+- Potential issue:
+  - concurrent checkout on the same SKU/variant
+- Current approach:
+  - stock validation before final order placement
+- Limitation:
+  - race condition is still possible under high contention
+- Failure scenario:
+  - two users place an order at the same time with the last remaining stock
+  - both pass validation before DB commit
+- Next improvements:
+  - DB row-level locking (`SELECT ... FOR UPDATE`)
+  - atomic decrement / optimistic locking pattern
+
+## Performance Optimization
+
+- Optional Elasticsearch to offload heavy search workloads
+- Caching for frequently accessed catalog context (`CatalogCache`)
+- Database indexes in critical flows (including chat sender/receiver + timestamp)
+- Queue-based background handling for email-heavy notifications
+- Use selective eager loading to reduce N+1 queries in product and order flows
+
+## Trade-offs
+
+- Monolith instead of microservices
+  - easier iteration and deployment
+  - harder independent scaling by bounded context
+- DB-first search fallback instead of Elasticsearch-only
+  - lower operational complexity
+  - weaker relevance and scaling characteristics
+- Synchronous order status email
+  - immediate delivery behavior without queue dependency
+  - adds response-time overhead to status updates
+
+## API / Endpoint Example
+
+This project is web-first (Blade + web routes), but chat and some flows expose JSON endpoints:
+
+- `POST /user/chat/send`
+- `GET /user/chat/messages`
+- `GET /admin/chat/users`
+- `GET /admin/chat/messages/{userId}`
+
+Example payload:
+
+```json
+{
+  "message": "Xin chao"
+}
+```
+
+## High-Level Feature Scope
+
+- Storefront: catalog, cart, checkout, orders, reviews
+- Security flows: OTP verification, OTP-gated profile actions, soft-delete restore lifecycle
+- Admin: catalog/promotion/user management + support chat
+- Staff: order operations, review moderation, inventory adjustments/logs, activity log
+- Integrations: PayPal, Google OAuth, OpenAI assistant, realtime chat
+
+## Project Structure
+
+- `app/Http/Controllers/User`, `Admin`, `Staff`
+- `app/Services`
+- `app/Models`
+- `app/Events/MessageSent.php`
+- `app/Observers/OrderObserver.php`
+- `routes/web.php`, `routes/channels.php`
+- `config/broadcasting.php`, `config/reverb.php`
+
 ## Requirements
 
-- **PHP** ^8.2
-- **Composer**
-- **Node.js** and **npm** (optional — Vite / Tailwind)
-- **MySQL** (or any Laravel-supported database)
+- PHP ^8.2
+- Composer
+- MySQL (or Laravel-supported DB)
+- Node.js + npm (optional, for Vite assets)
 
-## Installation
+## Setup and Run
 
-1. **Clone**
+```bash
+git clone https://github.com/KienCuongSoftware/NovaShop.git
+cd NovaShop
+composer install
+cp .env.example .env
+php artisan key:generate
+php artisan migrate
+php artisan storage:link
+```
 
-    ```bash
-     git clone https://github.com/KienCuongSoftware/NovaShop.git
-     cd NovaShop
-    ```
+Set `DB_*` and other needed `.env` keys (`MAIL_*`, `PAYPAL_*`, `GOOGLE_*`, `OPENAI_*`, `REVERB_*`).
 
-2. **Dependencies**
-
-    ```bash
-    composer install
-    ```
-
-3. **Environment**
-
-    ```bash
-    cp .env.example .env
-    php artisan key:generate
-    ```
-
-    Set `DB_*` in `.env`.
-
-    | Feature                           | `.env` keys                                                                                                                                                                                 |
-    | --------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-    | Google login                      | `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `GOOGLE_REDIRECT_URI`                                                                                                                           |
-    | PayPal                            | `PAYPAL_CLIENT_ID`, `PAYPAL_CLIENT_SECRET`, `PAYPAL_MODE`                                                                                                                                   |
-    | Shipping warehouse (Haversine)    | `SHIPPING_WAREHOUSE_LAT`, `SHIPPING_WAREHOUSE_LNG`                                                                                                                                          |
-    | Delivery estimate (UI / emails)   | `DELIVERY_PROCESSING_MIN`, `DELIVERY_PROCESSING_MAX`, `DELIVERY_KM_PER_DAY`, `DELIVERY_MAX_TRANSIT_DAYS`, `DELIVERY_BUFFER_DAYS`, `DELIVERY_PREVIEW_ASSUMED_KM` (see `config/delivery.php`) |
-    | AI chat (`/ai-chat`)              | `OPENAI_API_KEY`, `OPENAI_MODEL` (optional tool / history tunables in `.env.example`)                                                                                                       |
-    | Elasticsearch (optional search)   | `ELASTICSEARCH_ENABLED`, `ELASTICSEARCH_HOST`, `ELASTICSEARCH_PRODUCTS_INDEX`, …                                                                                                            |
-    | PayPal stock hold                 | `STOCK_RESERVATION_TTL_MINUTES`                                                                                                                                                             |
-    | **Email (OTP, back-in-stock, …)** | `MAIL_*` — use an **app password** for Gmail; **`QUEUE_CONNECTION=database`** + `php artisan queue:work` (or `composer run dev`) if you rely on **queued** mail such as back-in-stock       |
-    | **Realtime chat (Reverb/Pusher)** | `BROADCAST_CONNECTION`, `REVERB_APP_ID`, `REVERB_APP_KEY`, `REVERB_APP_SECRET`, `REVERB_SERVER_HOST`, `REVERB_SERVER_PORT`, `REVERB_HOST`, `REVERB_PORT`, `REVERB_SCHEME`, `VITE_REVERB_*` |
-
-4. **Migrations**
-
-    ```bash
-    php artisan migrate
-    ```
-
-5. **Storage link** (product / brand / category / avatar / review images)
-
-    ```bash
-    php artisan storage:link
-    ```
-
-6. **(Optional) Seed data**  
-   Creates a demo user `test@example.com` if missing, sample orders/addresses/logs, then **NovaShop feature samples** (coupons, wishlist, compare, stock inbox demo) when enough active products exist.
-
-    ```bash
-    php artisan db:seed
-    ```
-
-    Or only feature samples (needs products + at least one non-admin user):
-
-    ```bash
-    php artisan db:seed --class=NovaShopFeaturesSampleSeeder
-    ```
-
-7. **(Optional) Frontend build**
-    ```bash
-    npm install
-    npm run build
-    ```
-
-## Running
+Run app:
 
 ```bash
 php artisan serve
 ```
 
-Open `http://localhost:8000`.
-
-### Development (server + queue + logs + Vite)
+Development stack:
 
 ```bash
 composer run dev
-```
-
-### Realtime chat (local Reverb)
-
-```bash
 php artisan reverb:start
 ```
-
-## Features
-
-### Storefront (guest & authenticated)
-
-- **Home** — Products, sort/pagination, filters, search (DB + optional Elasticsearch; **synonyms** from admin); **flash sale** by time slot; category-based suggestions from recent views where implemented.
-- **Categories** — Tree (`/all-categories`); category pages with slug URLs, brand filter, search.
-- **Product detail** — Gallery, variants, flash pricing, stock, **shipping / delivery estimate** snippet, **reviews** (only **approved** reviews; pagination, star filter, AJAX partial); submit review only if the user has a **completed, delivered** purchase of that product; **add to cart**; **wishlist** / **compare** / **notify when back in stock**; **“Frequently bought together”** from `order_items` co-occurrence.
-- **Auth** — Register, login, logout; **Google OAuth** (Socialite); **email verification via OTP** (`email.verified.otp` middleware on shopping routes); **3-step onboarding register flow** (`register` -> `register-complete-name` -> `register-setup-avatar`).
-- **Profile** — Name, readonly email, **date of birth** (optional; used for birthday coupons), avatar; **password change via OTP gate** (verify OTP first, then old/new/confirm form).
-- **Account deletion & restore** — Delete flow with warning + confirmation text + OTP, then **soft delete**; login detects soft-deleted accounts and shows restore prompt (**Khôi phục / Hủy**) before restore OTP; restore allowed within a time window, then data can be anonymized.
-- **AI assistant** — `/ai-chat` (logged-in history; throttled public `send`); requires `OPENAI_API_KEY`.
-- **Address book** — CRUD; map picker (Leaflet + Nominatim); default address; lat/lng for shipping.
-- **Wishlist** — Per-user list (`/wishlist`).
-- **Compare** — Up to **4** products, attribute comparison table (`/compare`).
-- **Cart** — Add/update/remove; variant-aware; **apply / remove coupon**; totals respect active flash sale prices where applicable.
-- **Checkout** — Saved or new address + map; **shipping fee by distance**; shows subtotal, discount, shipping, total; **COD** or **PayPal**.
-- **Orders** — History, detail; **cancel** or **request return / refund** where allowed (restock / status rules); PayPal retry for unpaid/failed; **order status change** emails use synchronous `Mail::send` (no queue worker required).
-- **Stock alerts inbox** — `/notifications/stock`: rows after a back-in-stock email was sent (demo rows possible via seeder).
-- **Livechat with admin** — Popup chat in user layout with unread badge and **WebSocket realtime** updates (Laravel Echo + Reverb/Pusher).
-
-**Header (logged in):** quick links (heart / compare / bell / cart) with badges; account dropdown (profile, orders, addresses, logout). **Liên hệ** links to the on-page footer (`/#site-footer`).
-
-### Admin (`auth` + `admin` middleware)
-
-- **Dashboard** — Product/order/user/category counts, **30-day revenue** line chart, **top SKUs** (completed orders), **cancel rates** (30-day and all-time), recent orders (deep links to **staff** order detail where relevant).
-- **Products** — CRUD, variants, attributes (**Livewire** component for attribute values on the edit form), images, flash sale linkage.
-- **Categories** — Hierarchical `parent_id`, images on roots.
-- **Brands** — CRUD, logos.
-- **Attributes** — Attribute + values for variants.
-- **Flash sales** — Time slots and line items.
-- **Coupons / vouchers** — CRUD: percent or fixed amount, **minimum order**, optional **category scope** (descendants), validity window, max uses; **user segment** (all vs **VIP** via `users.is_vip`), **first order only** (no prior orders), **optional minimum completed orders**, **birthday window** (± days; requires `users.birthday`).
-- **Users** — CRUD / search; **admin flag**, **staff flag** (`is_staff`), **VIP flag**, **birthday** (for birthday coupons).
-- **Search synonyms** — Map keywords to extra query terms (`ProductSearchService` + admin CRUD).
-- **Admin profile** — Name, readonly email, avatar; OTP-gated password change; account deletion (confirm text + OTP + soft delete).
-
-Operational **order management**, **pending review moderation**, and **inventory movement history** live under the **staff** panel (separate login and `staff` middleware), not under `/admin`.
-
-### Staff (`auth` + `staff` middleware)
-
-- **Login** — `/staff/login` (users with `is_staff`).
-- **Dashboard** — Quick links, **Chart.js** summaries (orders in the last 7 days, distribution by status), KPI cards.
-- **Orders** — List with status / shipping filters and search; detail with **subtotal, discount, shipping**, distance; **internal notes**; **status updates** (including restock + inventory log on staff-initiated cancel where applicable); print view and CSV export by date range.
-- **Product reviews** — Pending queue: approve / reject, moderation notes/history, hide/unhide published reviews, quick rejection templates.
-- **Inventory** — Read-only inventory logs (filter by type / search) + manual inventory adjustment screen.
-- **Activity log** — Track staff actions for accountability.
-- **Staff profile** — Name, readonly email, avatar; OTP-gated password change; account deletion (confirm text + OTP + soft delete).
-
-### Business rules (summary)
-
-- **Coupons:** Validated on cart and again at **place order** (`CouponService`: segment VIP, first order, birthday window, min completed orders, category subtotal, min order amount); discount stored on `orders` (`coupon_id`, `discount_amount`); usage counter incremented when applicable.
-- **Shipping:** `ShippingFeeService` + `config/shipping.php` — Haversine from warehouse to checkout coordinates; fee tiers by km; defaults when coords missing. **Delivery preview** on product / order views uses `config/delivery.php` and km saved on the order when available.
-- **Stock alerts:** On variant (or simple product) stock going **0 → &gt;0**, subscribers get **queued** email (`ProductBackInStockMail` implements `ShouldQueue`) and can see history under **notifications/stock** — run a **queue worker** in production (or `composer run dev` locally).
-- **Order emails:** **`OrderStatusChangedMail`** is **not** queued; sent with `Mail::send` in the order observer so status updates still notify without `queue:work`.
-- **Products with variants:** Aggregate price/stock from variants; inventory logs on checkout/cancel flows.
-- **Account lifecycle:** Delete uses **soft delete** on `users`; restore requires OTP and explicit confirmation UI (not auto-restore).
-- **Livechat:** Messages are persisted in `messages`; realtime events via `MessageSent` + private channels `chat.user.{id}` with unread counters for admin and user.
-
-## Project structure (high level)
-
-| Area     | Paths                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
-| -------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| HTTP     | `User\WelcomeController`, `User\ProductController`, `User\ProductReviewController`, `User\AuthController`, `User\ProfileController`, `User\ChatController`, `User\AiChatController`, `User\AddressController`, `User\CartController`, `User\CheckoutController`, `User\OrderController`, `User\PayPalController`, `User\MomoController`, `User\WishlistController`, `User\CompareController`, `User\ListSharePublicController`, `User\StockNotificationController`, `User\StockAlertInboxController`, `Admin\DashboardController`, `Admin\AuthController`, `Admin\ChatController`, `Admin\ProductController`, `Admin\CategoryController`, `Admin\BrandController`, `Admin\AttributeController`, `Admin\FlashSaleController`, `Admin\CouponController`, `Admin\SearchSynonymController`, `Admin\ProfileController`, `Admin\UserController`, `Staff\AuthController`, `Staff\DashboardController`, `Staff\OrderController`, `Staff\ProductReviewController`, `Staff\InventoryLogController`, `Staff\InventoryAdjustmentController`, `Staff\ActivityLogController`, `Staff\ProfileController`, … |
-| Models   | `Category`, `Product`, `ProductVariant`, `ProductImage`, `ProductReview`, `SearchSynonym`, `Brand`, `Attribute`, `AttributeValue`, `User` (soft deletes), `Message`, `Address`, `Cart`, `CartItem`, `Coupon`, `WishlistItem`, `CompareItem`, `StockNotificationSubscription`, `Order`, `OrderItem`, `Payment`, `FlashSale`, `FlashSaleItem`, `InventoryLog`, `AiChatMessage`, …                                                                                                                                                                                                                                                                                                                 |
-| Services | `ShippingFeeService`, `CartPricingService`, `CouponService`, `StockNotificationService`, **`ProductSearchService`**, **`CatalogCache`**, **`OrderPlacementService`**, **`ProductService`**, `ProfilePasswordOtpService`, `AccountDeletionOtpService`, `AccountRestoreOtpService`                                                                                                                                                                                                                                                                                                                                                                                       |
-| Mail     | `ProductBackInStockMail`, `OrderStatusChangedMail`, `EmailVerificationOtpMail`, `ProductReviewRejectedMail`, `ProfilePasswordOtpMail`, `AccountDeletionOtpMail`, `AccountRestoreOtpMail`; views under `resources/views/emails/`                                                                                                                                                                                                                                                                                                                                                                                                                                               |
-| Events   | `MessageSent` (broadcast now for livechat)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
-| Config   | `config/shipping.php`, `config/delivery.php`, `config/services.php` (Elasticsearch, OpenAI, …), `config/broadcasting.php`, `config/reverb.php`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
-| Views    | `resources/views/layouts/` (admin, **staff**, user), `welcome.blade.php`, `products/`, `profile/`, `ai-chat/`, `user/` (auth onboarding + restore, cart, checkout, orders, addresses, **wishlist**, **compare**, **stock-alerts**, profile OTP/delete views), `admin/` (catalog, coupons, **search_synonyms**, users, profile OTP/delete views, …), **`staff/`** (auth, dashboard, **orders** incl. print, **product_reviews** incl. published, **inventory_logs**, **inventory/adjust**, **activity**, profile OTP/delete views), `livewire/`, `partials/`, `emails/` |
-| Routes   | `routes/web.php` — auth, cart, coupons, wishlist, compare, stock notifications, checkout, PayPal/MoMo, flash-sale JSON (`/api/flash-sale`), image routes, **admin/staff/user profile OTP flows**, account delete/restore flows, livechat routes; `routes/channels.php` for private broadcast channels; `routes/api.php` is intentionally empty (API v1 removed)                                                                                                                                                                                                                                                                                                         |
-
-## API note
-
-`/api/v1` and the `/spa` demo were removed. The project now runs as a web-first Laravel app (Blade + web routes).
-
-## Redis & cache ứng dụng
-
-- Mặc định `.env.example` dùng **`CACHE_STORE=database`** / **`SESSION_DRIVER=database`** — không cần Redis để chạy local.
-- **`CatalogCache`** dùng `Cache` facade → đặt **`CACHE_STORE=redis`** (và `REDIS_*`) nếu muốn Redis trong production.
-- Có thể thêm **`SESSION_DRIVER=redis`** khi đã chạy Redis ổn định.
-
-## Caching & queues (incremental)
-
-- **HTTP cache:** `CatalogCache` stores the **root category tree** (~10 min TTL) and **flash-sale “welcome” context** (~45s TTL). Keys are invalidated when `Category`, `FlashSale`, or `FlashSaleItem` changes (`AppServiceProvider`).
-- **Mail:** `ProductBackInStockMail` implements **`ShouldQueue`** — with `QUEUE_CONNECTION=database` (or Redis), run **`php artisan queue:work`** (included in **`composer run dev`**) so back-in-stock (and any other queued jobs) actually send. **Order status** mail is **synchronous** (see business rules).
-
-## Image URLs
-
-Assets under `storage/app/public/` are exposed via named routes, e.g.:
-
-- Products — `/images/products/{filename}`
-- Brands — `/images/brands/{filename}`
-- Categories — `/images/categories/{filename}`
-- Avatars — `/images/avatars/{filename}`
-- Review photos — `/images/reviews/{filename}`
-
-Requires `php artisan storage:link`.
 
 ## Testing
 
@@ -201,23 +234,7 @@ Requires `php artisan storage:link`.
 php artisan test
 ```
 
-Included: web feature tests and unit tests for core shopping flows (cart/checkout/order placement/coupon/recommendation behaviors), plus SQLite-friendly migrations.
-
-**Good next steps:** expand web feature coverage (payment callbacks, recommendation metrics UI, coupon segment edge-cases), and add more integration tests around search and shipping.
-
-## Roadmap / future improvements
-
-| Area                 | Today                                                  | Possible direction                                                |
-| -------------------- | ------------------------------------------------------ | ----------------------------------------------------------------- |
-| **Web architecture** | Blade storefront + admin panel with clear namespaces. | Optional Inertia/SPA layer later if needed.                      |
-| **Caching & queues** | Catalog cache + queued back-in-stock notifications.   | Redis production, monitor `failed_jobs`, chunk jobs.             |
-| **Tests**            | Auth, cart, checkout COD, order placement, factories. | Payment callbacks, recommendation metrics, coupon edge-cases.    |
-
-This project remains a **learning / demo** monolith; hardening infra for scale is optional follow-on work.
-
-## Code style
-
-[Laravel Pint](https://laravel.com/docs/pint):
+## Code Style
 
 ```bash
 ./vendor/bin/pint
